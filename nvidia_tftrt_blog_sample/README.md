@@ -1,2 +1,2 @@
 ## 
-  * git remote add origin https://github.com/stereoboy/tensorrt_tutorials.git
+  * https://devblogs.nvidia.com/tensorrt-integration-speeds-tensorflow-inference/
