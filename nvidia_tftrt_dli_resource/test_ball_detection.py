@@ -85,8 +85,8 @@ CHECKPOINT_PREFIX = 'model.ckpt'
 
 #config_path, checkpoint_path = download_model(**test_config['source_model'])
 
-config_path = "ball_models/pipeline.config"
-checkpoint_path = "ball_models/model.ckpt"
+config_path = "ball_models/frozen_model/pipeline.config"
+checkpoint_path = "ball_models/frozen_model/model.ckpt"
 print(config_path, checkpoint_path)
 
 def detect_frames(path_to_labels,
@@ -94,7 +94,7 @@ def detect_frames(path_to_labels,
                   output_path):
 
     if not os.path.exists(output_path):
-        os.mkdirs(output_path)
+        os.makedirs(output_path)
 
     # We load the label maps and access category names and their associated indicies
     label_map = label_map_util.load_labelmap(path_to_labels)
@@ -162,7 +162,7 @@ def detect_frames(path_to_labels,
                     break
 
 
-path_to_graph = join('ball_models','frozen_inference_graph.pb') 
+path_to_graph = join('ball_models/frozen_model','frozen_inference_graph.pb') 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print('Importing graph...')
 detection_graph = tf.Graph()
@@ -178,10 +178,19 @@ PATH_TO_LABELS = 'ball_models/ball_label_map.pbtxt'
 PATH_TO_TEST_IMAGES_DIR = 'ball_models/test_data' #Change the dataset and view the detections
 OUT_PATH = 'ball_models/test_result'
 
+if not os.path.exists(OUT_PATH):
+    os.makedirs(OUT_PATH)
+
+
 detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
-import sys
-sys.exit()
+
 print("Optimization")
+def _read_image(image_path, image_shape):
+    #image = Image.open(image_path).convert('RGB')
+    image = Image.open(image_path).convert('RGB')
+    if image_shape is not None:
+        image = image.resize(image_shape[::-1])
+    return np.array(image)
 
 def optimize_model(config_path,
                    checkpoint_path,
@@ -287,21 +296,23 @@ def optimize_model(config_path,
                 1]
     print("config.model.ssd.image_resizer.fixed_shape_resizer")
     print(config.model.ssd.image_resizer.fixed_shape_resizer)
+
     tf_config = tf.ConfigProto()
     tf_config.gpu_options.allow_growth = True
 
     # export inference graph to file (initial), this will create tmp_dir
-    with tf.Session(config=tf_config):
-        with tf.Graph().as_default():
-            exporter.export_inference_graph(
-                INPUT_NAME,
-                config,
-                checkpoint_path,
-                tmp_dir,
-                input_shape=[max_batch_size, None, None, 3])
-
-    # read frozen graph from file
-    frozen_graph_path = os.path.join(tmp_dir, FROZEN_GRAPH_NAME)
+#    with tf.Session(config=tf_config):
+#        with tf.Graph().as_default():
+#            exporter.export_inference_graph(
+#                INPUT_NAME,
+#                config,
+#                checkpoint_path,
+#                tmp_dir,
+#                input_shape=[max_batch_size, None, None, 3])
+#
+#    # read frozen graph from file
+#    frozen_graph_path = os.path.join(tmp_dir, FROZEN_GRAPH_NAME)
+    frozen_graph_path = os.path.join('ball_models/frozen_model', FROZEN_GRAPH_NAME)
     frozen_graph = tf.GraphDef()
     with open(frozen_graph_path, 'rb') as f:
         frozen_graph.ParseFromString(f.read())
@@ -351,7 +362,8 @@ def optimize_model(config_path,
                         # read batch of images
                         batch_images = []
                         for image_path in image_paths[image_idx:image_idx+max_batch_size]:
-                            image = _read_image(image_path, calib_image_shape)
+                            #image = _read_image(image_path, calib_image_shape)
+                            image = cv2.imread(image_path)
                             batch_images.append(image)
 
                         # execute batch of images
@@ -359,7 +371,7 @@ def optimize_model(config_path,
                             [tf_boxes, tf_classes, tf_scores, tf_num_detections],
                             feed_dict={tf_input: batch_images})
 
-                    pdb.set_trace()
+                    #pdb.set_trace()
                     frozen_graph = trt.calib_graph_to_infer_graph(frozen_graph)
 
     # re-enable variable batch size, this was forced to max
@@ -378,12 +390,22 @@ def optimize_model(config_path,
 
     return frozen_graph
 
-
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+print("\tINT8")
 # optimize model using source model
 frozen_graph_optimized = optimize_model(
     config_path=config_path,
     checkpoint_path=checkpoint_path,
-    **test_config['optimization_config'])
+    use_trt=True,
+    precision_mode="INT8",
+    force_nms_cpu=True,
+    replace_relu6=True,
+    remove_assert=True,
+    override_nms_score_threshold=0.3,
+    max_batch_size=1,
+    calib_images_dir='ball_models/test_data',
+    num_calib_images=100,
+    )
 
 print('Post-Optimization Run:')
 
@@ -393,6 +415,100 @@ detection_graph = tf.Graph()
 with detection_graph.as_default():
     od_graph_def = tf.GraphDef()
     tf.import_graph_def(frozen_graph_optimized, name='')
+    with tf.gfile.FastGFile('ball_models/optimized_model_INT8/optimized_graph.pb', "w") as f:
+        f.write(frozen_graph_optimized.SerializeToString())
+print('Importing graph completed')
+
+
+PATH_TO_LABELS = 'ball_models/ball_label_map.pbtxt'
+PATH_TO_TEST_IMAGES_DIR = 'ball_models/test_data' #Change the dataset and view the detections
+OUT_PATH = 'ball_models/test_result_INT8'
+
+if not os.path.exists(OUT_PATH):
+    os.makedirs(OUT_PATH)
+
+detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+print("\tFP32")
+# optimize model using source model
+frozen_graph_optimized = optimize_model(
+    config_path=config_path,
+    checkpoint_path=checkpoint_path,
+    use_trt=True,
+    precision_mode="FP32",
+    force_nms_cpu=True,
+    replace_relu6=True,
+    remove_assert=True,
+    override_nms_score_threshold=0.3,
+    max_batch_size=1
+    )
+
+print('Post-Optimization Run:')
+
+# Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
+print('Importing graph...')
+detection_graph = tf.Graph()
+with detection_graph.as_default():
+    od_graph_def = tf.GraphDef()
+    tf.import_graph_def(frozen_graph_optimized, name='')
+    with tf.gfile.FastGFile('ball_models/optimized_model_FP32/optimized_graph.pb', "w") as f:
+        f.write(frozen_graph_optimized.SerializeToString())
+
+    tf_config = tf.ConfigProto()
+    tf_config.gpu_options.allow_growth = True
+#    with tf.Session(config=tf_config) as tf_sess:
+#        init = tf.global_variables_initializer()
+#        tf_sess.run(init)
+#        saver = tf.train.Saver()
+#        saver.save(tf_sess, 'ball_models/optimized_model_FP16')
+#        tf.train.write_graph(tf_sess.graph.as_graph_def(), 'ball_models/optimized_model_FP16', 'optimized_model.pbtxt', as_text=True)
+print('Importing graph completed')
+
+
+PATH_TO_LABELS = 'ball_models/ball_label_map.pbtxt'
+PATH_TO_TEST_IMAGES_DIR = 'ball_models/test_data' #Change the dataset and view the detections
+OUT_PATH = 'ball_models/test_result_FP32'
+
+if not os.path.exists(OUT_PATH):
+    os.makedirs(OUT_PATH)
+
+detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
+
+
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+print("\tFP16")
+# optimize model using source model
+frozen_graph_optimized = optimize_model(
+    config_path=config_path,
+    checkpoint_path=checkpoint_path,
+    use_trt=True,
+    precision_mode="FP16",
+    force_nms_cpu=True,
+    replace_relu6=True,
+    remove_assert=True,
+    override_nms_score_threshold=0.3,
+    max_batch_size=1
+    )
+
+print('Post-Optimization Run:')
+
+# Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
+print('Importing graph...')
+detection_graph = tf.Graph()
+with detection_graph.as_default():
+    od_graph_def = tf.GraphDef()
+    tf.import_graph_def(frozen_graph_optimized, name='')
+    with tf.gfile.FastGFile('ball_models/optimized_model_FP16/optimized_graph.pb', "w") as f:
+        f.write(frozen_graph_optimized.SerializeToString())
+
+    tf_config = tf.ConfigProto()
+    tf_config.gpu_options.allow_growth = True
 print('Importing graph completed')
 
 
@@ -400,5 +516,10 @@ PATH_TO_LABELS = 'ball_models/ball_label_map.pbtxt'
 PATH_TO_TEST_IMAGES_DIR = 'ball_models/test_data' #Change the dataset and view the detections
 OUT_PATH = 'ball_models/test_result_FP16'
 
+if not os.path.exists(OUT_PATH):
+    os.makedirs(OUT_PATH)
+
 detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
