@@ -1,3 +1,7 @@
+'''
+    python3 test_ball_detection_restore.py
+'''
+
 from __future__ import absolute_import
 
 
