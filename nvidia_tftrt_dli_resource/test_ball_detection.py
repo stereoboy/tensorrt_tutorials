@@ -414,6 +414,14 @@ frozen_graph_optimized = optimize_model(
 
 print('Post-Optimization Run:')
 
+#
+# Save optimized graph on a file
+#
+# references:
+#   - https://medium.com/@prasadpal107/saving-freezing-optimizing-for-inference-restoring-of-tensorflow-models-b4146deb21b5
+#   - https://docs.nvidia.com/deeplearning/frameworks/tf-trt-user-guide/index.html
+#
+
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print('Importing graph...')
 detection_graph = tf.Graph()
