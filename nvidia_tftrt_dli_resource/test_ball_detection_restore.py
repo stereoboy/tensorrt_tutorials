@@ -10,11 +10,6 @@ from __future__ import absolute_import
 
 from matplotlib import pyplot as plt
 
-# libraries to read json config files
-
-import argparse
-import json
-
 # tensorflow libraries    
 import tensorflow as tf
 import tensorflow.contrib.tensorrt as trt
@@ -43,7 +38,7 @@ def detect_frames(path_to_labels,
                   output_path):
 
     if not os.path.exists(output_path):
-        os.mkdirs(output_path)
+        os.makedirs(output_path)
 
     # We load the label maps and access category names and their associated indicies
     label_map = label_map_util.load_labelmap(path_to_labels)
