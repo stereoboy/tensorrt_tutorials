@@ -1,0 +1,181 @@
+Namespace(FP16=True, FP32=True, INT8=True, batch_size=4, dump_diff=False, native=True, num_loops=10, topN=5, update_graphdef=False, with_timeline=False, workspace_size=2048)
+Starting at 2019-07-30 11:04:39.947718
+2019-07-30 11:04:39.956661: I tensorflow/core/platform/cpu_feature_guard.cc:141] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2019-07-30 11:04:40.060095: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:998] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2019-07-30 11:04:40.061975: I tensorflow/compiler/xla/service/service.cc:150] XLA service 0x2de8500 executing computations on platform CUDA. Devices:
+2019-07-30 11:04:40.061987: I tensorflow/compiler/xla/service/service.cc:158]   StreamExecutor device (0): GeForce GTX 1080 Ti, Compute Capability 6.1
+2019-07-30 11:04:40.080365: I tensorflow/core/platform/profile_utils/cpu_utils.cc:94] CPU Frequency: 4200000000 Hz
+2019-07-30 11:04:40.081900: I tensorflow/compiler/xla/service/service.cc:150] XLA service 0x2ea59e0 executing computations on platform Host. Devices:
+2019-07-30 11:04:40.081982: I tensorflow/compiler/xla/service/service.cc:158]   StreamExecutor device (0): <undefined>, <undefined>
+2019-07-30 11:04:40.082650: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1433] Found device 0 with properties: 
+name: GeForce GTX 1080 Ti major: 6 minor: 1 memoryClockRate(GHz): 1.6325
+pciBusID: 0000:01:00.0
+totalMemory: 10.92GiB freeMemory: 10.38GiB
+2019-07-30 11:04:40.082706: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1512] Adding visible gpu devices: 0
+2019-07-30 11:04:40.213278: I tensorflow/core/common_runtime/gpu/gpu_device.cc:984] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-07-30 11:04:40.213307: I tensorflow/core/common_runtime/gpu/gpu_device.cc:990]      0 
+2019-07-30 11:04:40.213313: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1003] 0:   N 
+2019-07-30 11:04:40.213446: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1115] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 5588 MB memory) -> physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:01:00.0, compute capability: 6.1)
+WARNING:tensorflow:From tftrt_sample.py:92: FastGFile.__init__ (from tensorflow.python.platform.gfile) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use tf.gfile.GFile.
+INFO:tensorflow:Starting execution
+2019-07-30 11:04:40.803019: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1512] Adding visible gpu devices: 0
+2019-07-30 11:04:40.803054: I tensorflow/core/common_runtime/gpu/gpu_device.cc:984] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-07-30 11:04:40.803059: I tensorflow/core/common_runtime/gpu/gpu_device.cc:990]      0 
+2019-07-30 11:04:40.803063: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1003] 0:   N 
+2019-07-30 11:04:40.803162: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1115] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 5588 MB memory) -> physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:01:00.0, compute capability: 6.1)
+INFO:tensorflow:Starting Warmup cycle
+INFO:tensorflow:Warmup done. Starting real timing
+iter  0   0.010216856002807617
+iter  1   0.010152812004089356
+iter  2   0.01014096736907959
+iter  3   0.010124683380126953
+iter  4   0.01014007568359375
+iter  5   0.010130863189697265
+iter  6   0.010142974853515625
+iter  7   0.010161862373352051
+iter  8   0.010157766342163086
+iter  9   0.010193562507629395
+Comparison= True
+INFO:tensorflow:Timing loop done!
+images/s : 393.8 +/- 1.1, s/batch: 0.01016 +/- 0.00003
+RES, Native, 4, 393.85, 1.05, 0.01016, 0.00003
+WARNING:tensorflow:TensorRT mismatch. Compiled against version 5.0.2, but loaded 5.1.5. Things may not work
+2019-07-30 11:04:47.456671: I tensorflow/core/grappler/devices.cc:51] Number of eligible GPUs (core count >= 8): 1
+2019-07-30 11:04:47.457276: I tensorflow/core/grappler/clusters/single_machine.cc:359] Starting new session
+2019-07-30 11:04:47.457477: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1512] Adding visible gpu devices: 0
+2019-07-30 11:04:47.457497: I tensorflow/core/common_runtime/gpu/gpu_device.cc:984] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-07-30 11:04:47.457502: I tensorflow/core/common_runtime/gpu/gpu_device.cc:990]      0 
+2019-07-30 11:04:47.457506: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1003] 0:   N 
+2019-07-30 11:04:47.457604: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1115] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 5588 MB memory) -> physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:01:00.0, compute capability: 6.1)
+2019-07-30 11:04:48.138676: I tensorflow/contrib/tensorrt/segment/segment.cc:443] There are 5 ops of 4 different types in the graph that are not converted to TensorRT: Reshape, Shape, Placeholder, NoOp, (For more information see https://docs.nvidia.com/deeplearning/dgx/integrate-tf-trt/index.html#support-ops).
+2019-07-30 11:04:48.153992: I tensorflow/contrib/tensorrt/convert/convert_graph.cc:913] Number of TensorRT candidate segments: 1
+2019-07-30 11:04:59.082316: I tensorflow/contrib/tensorrt/convert/convert_graph.cc:1015] TensorRT node TRTEngineOp_0 added for segment 0 consisting of 460 nodes succeeded.
+2019-07-30 11:04:59.104876: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:581] Optimization results for grappler item: tf_graph
+2019-07-30 11:04:59.104908: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:583]   constant folding: Graph size after: 461 nodes (-267), 477 edges (-267), time = 235.256ms.
+2019-07-30 11:04:59.104912: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:583]   layout: Graph size after: 468 nodes (7), 479 edges (2), time = 48.439ms.
+2019-07-30 11:04:59.104916: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:583]   constant folding: Graph size after: 463 nodes (-5), 479 edges (0), time = 160.021ms.
+2019-07-30 11:04:59.104919: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:583]   TensorRTOptimizer: Graph size after: 4 nodes (-459), 4 edges (-475), time = 11060.1592ms.
+INFO:tensorflow:Starting execution
+2019-07-30 11:05:01.174001: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1512] Adding visible gpu devices: 0
+2019-07-30 11:05:01.174041: I tensorflow/core/common_runtime/gpu/gpu_device.cc:984] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-07-30 11:05:01.174046: I tensorflow/core/common_runtime/gpu/gpu_device.cc:990]      0 
+2019-07-30 11:05:01.174050: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1003] 0:   N 
+2019-07-30 11:05:01.174142: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1115] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 5588 MB memory) -> physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:01:00.0, compute capability: 6.1)
+INFO:tensorflow:Starting Warmup cycle
+INFO:tensorflow:Warmup done. Starting real timing
+iter  0   0.005863418579101562
+iter  1   0.005580234527587891
+iter  2   0.005569076538085938
+iter  3   0.005572519302368164
+iter  4   0.0056298446655273435
+iter  5   0.00559544563293457
+iter  6   0.0056406307220458985
+iter  7   0.005657391548156738
+iter  8   0.005599980354309082
+iter  9   0.0056095123291015625
+Comparison= True
+INFO:tensorflow:Timing loop done!
+images/s : 710.3 +/- 10.0, s/batch: 0.00563 +/- 0.00008
+RES, TRT-FP32, 4, 710.25, 10.04, 0.00563, 0.00008
+WARNING:tensorflow:TensorRT mismatch. Compiled against version 5.0.2, but loaded 5.1.5. Things may not work
+2019-07-30 11:05:04.899182: I tensorflow/core/grappler/devices.cc:51] Number of eligible GPUs (core count >= 8): 1
+2019-07-30 11:05:04.899868: I tensorflow/core/grappler/clusters/single_machine.cc:359] Starting new session
+2019-07-30 11:05:04.900097: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1512] Adding visible gpu devices: 0
+2019-07-30 11:05:04.900117: I tensorflow/core/common_runtime/gpu/gpu_device.cc:984] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-07-30 11:05:04.900121: I tensorflow/core/common_runtime/gpu/gpu_device.cc:990]      0 
+2019-07-30 11:05:04.900125: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1003] 0:   N 
+2019-07-30 11:05:04.900219: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1115] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 5588 MB memory) -> physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:01:00.0, compute capability: 6.1)
+2019-07-30 11:05:05.310420: I tensorflow/contrib/tensorrt/segment/segment.cc:443] There are 5 ops of 4 different types in the graph that are not converted to TensorRT: Reshape, Shape, Placeholder, NoOp, (For more information see https://docs.nvidia.com/deeplearning/dgx/integrate-tf-trt/index.html#support-ops).
+2019-07-30 11:05:05.325584: I tensorflow/contrib/tensorrt/convert/convert_graph.cc:913] Number of TensorRT candidate segments: 1
+2019-07-30 11:05:05.556890: W tensorflow/contrib/tensorrt/log/trt_logger.cc:34] DefaultLogger Half2 support requested on hardware without native FP16 support, performance will be negatively affected.
+2019-07-30 11:05:21.044062: I tensorflow/contrib/tensorrt/convert/convert_graph.cc:1015] TensorRT node TRTEngineOp_0 added for segment 0 consisting of 460 nodes succeeded.
+2019-07-30 11:05:21.068671: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:581] Optimization results for grappler item: tf_graph
+2019-07-30 11:05:21.068700: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:583]   constant folding: Graph size after: 461 nodes (-267), 477 edges (-267), time = 136.301ms.
+2019-07-30 11:05:21.068704: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:583]   layout: Graph size after: 468 nodes (7), 479 edges (2), time = 48.476ms.
+2019-07-30 11:05:21.068707: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:583]   constant folding: Graph size after: 463 nodes (-5), 479 edges (0), time = 110.252ms.
+2019-07-30 11:05:21.068710: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:583]   TensorRTOptimizer: Graph size after: 4 nodes (-459), 4 edges (-475), time = 15815.4658ms.
+INFO:tensorflow:Starting execution
+2019-07-30 11:05:23.170157: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1512] Adding visible gpu devices: 0
+2019-07-30 11:05:23.170199: I tensorflow/core/common_runtime/gpu/gpu_device.cc:984] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-07-30 11:05:23.170204: I tensorflow/core/common_runtime/gpu/gpu_device.cc:990]      0 
+2019-07-30 11:05:23.170208: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1003] 0:   N 
+2019-07-30 11:05:23.170309: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1115] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 5588 MB memory) -> physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:01:00.0, compute capability: 6.1)
+INFO:tensorflow:Starting Warmup cycle
+INFO:tensorflow:Warmup done. Starting real timing
+iter  0   0.005657076835632324
+iter  1   0.005658679008483887
+iter  2   0.005669493675231934
+iter  3   0.005649337768554688
+iter  4   0.00574577808380127
+iter  5   0.005678830146789551
+iter  6   0.005666184425354004
+iter  7   0.005686898231506348
+iter  8   0.005677146911621094
+iter  9   0.0057049083709716794
+Comparison= True
+INFO:tensorflow:Timing loop done!
+images/s : 704.3 +/- 3.3, s/batch: 0.00568 +/- 0.00003
+RES, TRT-FP16, 4, 704.30, 3.31, 0.00568, 0.00003
+WARNING:tensorflow:TensorRT mismatch. Compiled against version 5.0.2, but loaded 5.1.5. Things may not work
+2019-07-30 11:05:26.981073: I tensorflow/core/grappler/devices.cc:51] Number of eligible GPUs (core count >= 8): 1
+2019-07-30 11:05:26.981288: I tensorflow/core/grappler/clusters/single_machine.cc:359] Starting new session
+2019-07-30 11:05:26.981486: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1512] Adding visible gpu devices: 0
+2019-07-30 11:05:26.981505: I tensorflow/core/common_runtime/gpu/gpu_device.cc:984] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-07-30 11:05:26.981510: I tensorflow/core/common_runtime/gpu/gpu_device.cc:990]      0 
+2019-07-30 11:05:26.981514: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1003] 0:   N 
+2019-07-30 11:05:26.981615: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1115] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 5588 MB memory) -> physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:01:00.0, compute capability: 6.1)
+2019-07-30 11:05:27.393298: I tensorflow/contrib/tensorrt/segment/segment.cc:443] There are 5 ops of 4 different types in the graph that are not converted to TensorRT: Reshape, Shape, Placeholder, NoOp, (For more information see https://docs.nvidia.com/deeplearning/dgx/integrate-tf-trt/index.html#support-ops).
+2019-07-30 11:05:27.408567: I tensorflow/contrib/tensorrt/convert/convert_graph.cc:913] Number of TensorRT candidate segments: 1
+2019-07-30 11:05:38.260019: I tensorflow/contrib/tensorrt/convert/convert_graph.cc:1015] TensorRT node TRTEngineOp_0 added for segment 0 consisting of 460 nodes succeeded.
+2019-07-30 11:05:38.282664: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:581] Optimization results for grappler item: tf_graph
+2019-07-30 11:05:38.282695: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:583]   constant folding: Graph size after: 461 nodes (-267), 477 edges (-267), time = 135.908ms.
+2019-07-30 11:05:38.282700: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:583]   layout: Graph size after: 468 nodes (7), 479 edges (2), time = 49.257ms.
+2019-07-30 11:05:38.282703: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:583]   constant folding: Graph size after: 463 nodes (-5), 479 edges (0), time = 110.661ms.
+2019-07-30 11:05:38.282707: I tensorflow/core/grappler/optimizers/meta_optimizer.cc:583]   TensorRTOptimizer: Graph size after: 4 nodes (-459), 4 edges (-475), time = 10947.1562ms.
+Running Calibration
+INFO:tensorflow:Starting execution
+2019-07-30 11:05:40.150340: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1512] Adding visible gpu devices: 0
+2019-07-30 11:05:40.150379: I tensorflow/core/common_runtime/gpu/gpu_device.cc:984] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-07-30 11:05:40.150384: I tensorflow/core/common_runtime/gpu/gpu_device.cc:990]      0 
+2019-07-30 11:05:40.150388: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1003] 0:   N 
+2019-07-30 11:05:40.150487: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1115] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 5588 MB memory) -> physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:01:00.0, compute capability: 6.1)
+INFO:tensorflow:Starting Warmup cycle
+2019-07-30 11:05:40.501964: I tensorflow/contrib/tensorrt/kernels/trt_engine_op.cc:574] Starting calibration thread on device 0, Calibration Resource @ 0x49d3930
+INFO:tensorflow:Warmup done. Starting real timing
+iter  0   1.2942314958572387
+Comparison= True
+INFO:tensorflow:Timing loop done!
+Creating inference graph
+2019-07-30 11:07:13.204105: I tensorflow/contrib/tensorrt/convert/convert_graph.cc:192] Starting Calib Conversion
+2019-07-30 11:07:13.247130: W tensorflow/contrib/tensorrt/convert/convert_graph.cc:198] Construction of static int8 engine is not implemented yet!. Dynamic engine will be constructed
+INFO:tensorflow:Starting execution
+2019-07-30 11:07:42.358395: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1512] Adding visible gpu devices: 0
+2019-07-30 11:07:42.358435: I tensorflow/core/common_runtime/gpu/gpu_device.cc:984] Device interconnect StreamExecutor with strength 1 edge matrix:
+2019-07-30 11:07:42.358441: I tensorflow/core/common_runtime/gpu/gpu_device.cc:990]      0 
+2019-07-30 11:07:42.358444: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1003] 0:   N 
+2019-07-30 11:07:42.358543: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1115] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 5588 MB memory) -> physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:01:00.0, compute capability: 6.1)
+INFO:tensorflow:Starting Warmup cycle
+2019-07-30 11:07:42.719634: I tensorflow/contrib/tensorrt/kernels/trt_engine_op.cc:496] Building a new TensorRT engine for import/TRTEngineOp_0 with batch size 4
+INFO:tensorflow:Warmup done. Starting real timing
+iter  0   0.0031508445739746095
+iter  1   0.0029649925231933594
+iter  2   0.0027884960174560545
+iter  3   0.002815999984741211
+iter  4   0.0028418779373168947
+iter  5   0.002828869819641113
+iter  6   0.0028429746627807615
+iter  7   0.0028308725357055666
+iter  8   0.0028484487533569336
+iter  9   0.0028096628189086914
+Comparison= True
+INFO:tensorflow:Timing loop done!
+images/s : 1392.6 +/- 46.9, s/batch: 0.00287 +/- 0.00010
+RES, TRT-INT8, 4, 1392.61, 46.85, 0.00287, 0.00010
+Done timing 2019-07-30 11:08:05.296553
+native ['bow tie, bow-tie, bowtie', 'cornet, horn, trumpet, trump', 'military uniform', 'sweatshirt', 'bulletproof vest']
+FP32 ['bow tie, bow-tie, bowtie', 'cornet, horn, trumpet, trump', 'military uniform', 'sweatshirt', 'bulletproof vest']
+FP16 ['bow tie, bow-tie, bowtie', 'cornet, horn, trumpet, trump', 'military uniform', 'sweatshirt', 'bulletproof vest']
+INT8 ['bow tie, bow-tie, bowtie', 'cornet, horn, trumpet, trump', 'bulletproof vest', 'sweatshirt', "plunger, plumber's helper"]
+
