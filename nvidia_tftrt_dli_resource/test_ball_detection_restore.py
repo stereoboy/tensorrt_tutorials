@@ -25,6 +25,9 @@ import os
 import glob
 from os.path import join
 
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="0" #selects a specific device
+
 
 # OpenCV library
 import cv2
@@ -69,6 +72,7 @@ def detect_frames(path_to_labels,
             height, width, channels = image.shape
             number_of_tests = 100
             counter = 1
+            timings = []
             total_time = 0
             print('Running Inference:')
             for fdx, file_name in \
@@ -100,10 +104,14 @@ def detect_frames(path_to_labels,
                 plt.axis('off')
 #                plt.show()
                 prog = 'Completed current frame in: %.3f seconds. %% (Total: %.3f secconds)' % (t_diff, total_time)
+
+                if counter > 10:
+                    timings.append(t_diff)
                 print('{}\r'.format(prog))
                 counter = counter + 1
                 if counter > number_of_tests:
                     break
+            print("mean = {}, std = {}".format(np.mean(timings), np.std(timings)))
 
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 print('Native Frozen Model')

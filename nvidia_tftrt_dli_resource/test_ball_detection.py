@@ -48,6 +48,8 @@ import os
 import glob
 from os.path import join
 
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="0" #selects a specific device
 
 # OpenCV library
 import cv2
