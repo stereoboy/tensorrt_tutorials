@@ -32,6 +32,7 @@ from tensorflow.python.framework import ops
 from tensorflow.python.platform import app
 from tensorflow.python.platform import gfile
 from tensorflow.python.summary import summary
+import tensorflow.contrib.tensorrt as trt
 
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="1" #selects a specific device
