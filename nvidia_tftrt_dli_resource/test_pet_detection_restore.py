@@ -134,11 +134,11 @@ OUT_PATH = 'pet_models/test_result'
 detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
-path_to_graph = join('pet_models/optimized_model_FP16','optimized_graph.pb') 
-# Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 print('FP32 Optimized Model')
 print('Importing graph...')
+# Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
+path_to_graph = join('pet_models/optimized_model_FP16','optimized_graph.pb') 
 detection_graph = tf.Graph()
 with detection_graph.as_default():
     optimized_graph_def = tf.GraphDef()
@@ -156,11 +156,11 @@ detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
-path_to_graph = join('pet_models/optimized_model_FP16','optimized_graph.pb') 
-# Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 print('FP16 Optimized Model')
 print('Importing graph...')
+# Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
+path_to_graph = join('pet_models/optimized_model_FP16','optimized_graph.pb') 
 detection_graph = tf.Graph()
 with detection_graph.as_default():
     optimized_graph_def = tf.GraphDef()

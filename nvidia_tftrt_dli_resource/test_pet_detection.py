@@ -169,6 +169,8 @@ def detect_frames(path_to_labels,
                     break
 
 
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+print("\tNative")
 path_to_graph = join('pet_models/frozen_model','frozen_inference_graph.pb') 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print('Importing graph...')
@@ -190,8 +192,8 @@ if not os.path.exists(OUT_PATH):
 
 
 detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
-print("Optimization")
 def _read_image(image_path, image_shape):
     #image = Image.open(image_path).convert('RGB')
     image = Image.open(image_path).convert('RGB')
@@ -398,55 +400,6 @@ def optimize_model(config_path,
     return frozen_graph
 
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-print("\tINT8")
-# optimize model using source model
-frozen_graph_optimized = optimize_model(
-    config_path=config_path,
-    checkpoint_path=checkpoint_path,
-    use_trt=True,
-    precision_mode="INT8",
-    force_nms_cpu=True,
-    replace_relu6=True,
-    remove_assert=True,
-    override_nms_score_threshold=0.3,
-    max_batch_size=1,
-    calib_images_dir='pet_models/test_data',
-    num_calib_images=100,
-    )
-
-print('Post-Optimization Run:')
-
-#
-# Save optimized graph on a file
-#
-# references:
-#   - https://medium.com/@prasadpal107/saving-freezing-optimizing-for-inference-restoring-of-tensorflow-models-b4146deb21b5
-#   - https://docs.nvidia.com/deeplearning/frameworks/tf-trt-user-guide/index.html
-#
-
-# Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
-print('Importing graph...')
-detection_graph = tf.Graph()
-with detection_graph.as_default():
-    od_graph_def = tf.GraphDef()
-    tf.import_graph_def(frozen_graph_optimized, name='')
-    with tf.gfile.FastGFile('pet_models/optimized_model_INT8/optimized_graph.pb', "w") as f:
-        f.write(frozen_graph_optimized.SerializeToString())
-print('Importing graph completed')
-
-
-PATH_TO_LABELS = 'pet_models/pet_label_map.pbtxt'
-PATH_TO_TEST_IMAGES_DIR = 'pet_models/test_data' #Change the dataset and view the detections
-OUT_PATH = 'pet_models/test_result_INT8'
-
-if not os.path.exists(OUT_PATH):
-    os.makedirs(OUT_PATH)
-
-detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
-detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
-print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-
-print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 print("\tFP32")
 # optimize model using source model
 frozen_graph_optimized = optimize_model(
@@ -530,6 +483,56 @@ print('Importing graph completed')
 PATH_TO_LABELS = 'pet_models/pet_label_map.pbtxt'
 PATH_TO_TEST_IMAGES_DIR = 'pet_models/test_data' #Change the dataset and view the detections
 OUT_PATH = 'pet_models/test_result_FP16'
+
+if not os.path.exists(OUT_PATH):
+    os.makedirs(OUT_PATH)
+
+detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
+
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+print("\tINT8")
+# optimize model using source model
+frozen_graph_optimized = optimize_model(
+    config_path=config_path,
+    checkpoint_path=checkpoint_path,
+    use_trt=True,
+    precision_mode="INT8",
+    force_nms_cpu=True,
+    replace_relu6=True,
+    remove_assert=True,
+    override_nms_score_threshold=0.3,
+    max_batch_size=1,
+    calib_images_dir='pet_models/test_data',
+    num_calib_images=100,
+    )
+
+print('Post-Optimization Run:')
+
+#
+# Save optimized graph on a file
+#
+# references:
+#   - https://medium.com/@prasadpal107/saving-freezing-optimizing-for-inference-restoring-of-tensorflow-models-b4146deb21b5
+#   - https://docs.nvidia.com/deeplearning/frameworks/tf-trt-user-guide/index.html
+#
+
+# Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
+print('Importing graph...')
+detection_graph = tf.Graph()
+with detection_graph.as_default():
+    od_graph_def = tf.GraphDef()
+    tf.import_graph_def(frozen_graph_optimized, name='')
+    with tf.gfile.FastGFile('pet_models/optimized_model_INT8/optimized_graph.pb', "w") as f:
+        f.write(frozen_graph_optimized.SerializeToString())
+print('Importing graph completed')
+
+
+PATH_TO_LABELS = 'pet_models/pet_label_map.pbtxt'
+PATH_TO_TEST_IMAGES_DIR = 'pet_models/test_data' #Change the dataset and view the detections
+OUT_PATH = 'pet_models/test_result_INT8'
 
 if not os.path.exists(OUT_PATH):
     os.makedirs(OUT_PATH)
