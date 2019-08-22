@@ -105,8 +105,8 @@ def detect_frames(path_to_labels,
 #                plt.show()
                 prog = 'Completed current frame in: %.3f seconds. %% (Total: %.3f secconds)' % (t_diff, total_time)
 
-                if counter > 10:
-                    timings.append(t_diff)
+                if counter > 5:
+                    timings.append(1000*t_diff)
                 print('{}\r'.format(prog))
                 counter = counter + 1
                 if counter > number_of_tests:
@@ -131,6 +131,7 @@ PATH_TO_LABELS = 'pet_models/pet_label_map.pbtxt'
 PATH_TO_TEST_IMAGES_DIR = 'pet_models/test_data' #Change the dataset and view the detections
 OUT_PATH = 'pet_models/test_result'
 
+detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 

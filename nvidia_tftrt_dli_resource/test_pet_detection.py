@@ -418,6 +418,9 @@ print('Post-Optimization Run:')
 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print('Importing graph...')
+if not os.path.exists('pet_models/optimized_model_FP32'):
+    os.makedirs('pet_models/optimized_model_FP32')
+
 detection_graph = tf.Graph()
 with detection_graph.as_default():
     od_graph_def = tf.GraphDef()
@@ -468,6 +471,9 @@ print('Post-Optimization Run:')
 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print('Importing graph...')
+if not os.path.exists('pet_models/optimized_model_FP16'):
+    os.makedirs('pet_models/optimized_model_FP16')
+
 detection_graph = tf.Graph()
 with detection_graph.as_default():
     od_graph_def = tf.GraphDef()
@@ -521,6 +527,9 @@ print('Post-Optimization Run:')
 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print('Importing graph...')
+if not os.path.exists('pet_models/optimized_model_INT8'):
+    os.makedirs('pet_models/optimized_model_INT8')
+
 detection_graph = tf.Graph()
 with detection_graph.as_default():
     od_graph_def = tf.GraphDef()
