@@ -99,14 +99,10 @@ def detect_frames(path_to_labels,
                     line_thickness=7,
                     min_score_thresh=0.5)
                 cv2.imwrite(join(output_path, file_name), image)
-                plt.figure(figsize=(6,3))
-                plt.imshow(image.astype(np.uint8))
-                plt.axis('off')
-#                plt.show()
                 prog = 'Completed current frame in: %.3f seconds. %% (Total: %.3f secconds)' % (t_diff, total_time)
 
                 if counter > 10:
-                    timings.append(t_diff)
+                    timings.append(1000*t_diff)
                 print('{}\r'.format(prog))
                 counter = counter + 1
                 if counter > number_of_tests:
@@ -114,7 +110,7 @@ def detect_frames(path_to_labels,
             print("mean = {}, std = {}".format(np.mean(timings), np.std(timings)))
 
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-print('Native Frozen Model')
+print('\tNative Frozen Model')
 path_to_graph = join('ball_models/frozen_model','frozen_inference_graph.pb') 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print('Importing graph...')
@@ -132,12 +128,13 @@ PATH_TO_TEST_IMAGES_DIR = 'ball_models/test_data' #Change the dataset and view t
 OUT_PATH = 'ball_models/test_result'
 
 detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
 path_to_graph = join('ball_models/optimized_model_FP16','optimized_graph.pb') 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-print('FP32 Optimized Model')
+print('\tFP32 Optimized Model')
 print('Importing graph...')
 detection_graph = tf.Graph()
 with detection_graph.as_default():
@@ -159,7 +156,7 @@ print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 path_to_graph = join('ball_models/optimized_model_FP16','optimized_graph.pb') 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-print('FP16 Optimized Model')
+print('\tFP16 Optimized Model')
 print('Importing graph...')
 detection_graph = tf.Graph()
 with detection_graph.as_default():

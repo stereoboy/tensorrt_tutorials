@@ -70,14 +70,6 @@ from object_detection.utils import visualization_utils as vis_util
 print("Custom Operations")
 print("Custom Relu6 Code Sample")
 
-config_path = join('tensorrt', 'model_config.json')
-
-with open(config_path, 'r') as f:
-    test_config = json.load(f)
-    print(json.dumps(test_config, sort_keys=True, indent=4))
-
-
-
 Model = namedtuple('Model', ['name', 'url', 'extract_dir'])
 
 INPUT_NAME = 'image_tensor'
@@ -89,8 +81,6 @@ NUM_DETECTIONS_NAME = 'num_detections'
 FROZEN_GRAPH_NAME = 'frozen_inference_graph.pb'
 PIPELINE_CONFIG_NAME = 'pipeline.config'
 CHECKPOINT_PREFIX = 'model.ckpt'
-
-#config_path, checkpoint_path = download_model(**test_config['source_model'])
 
 config_path = "ball_models/frozen_model/pipeline.config"
 checkpoint_path = "ball_models/frozen_model/model.ckpt"
@@ -169,6 +159,8 @@ def detect_frames(path_to_labels,
                     break
 
 
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+print("\tNative")
 path_to_graph = join('ball_models/frozen_model','frozen_inference_graph.pb') 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print('Importing graph...')
@@ -397,54 +389,7 @@ def optimize_model(config_path,
 
     return frozen_graph
 
-print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-print("\tINT8")
-# optimize model using source model
-frozen_graph_optimized = optimize_model(
-    config_path=config_path,
-    checkpoint_path=checkpoint_path,
-    use_trt=True,
-    precision_mode="INT8",
-    force_nms_cpu=True,
-    replace_relu6=True,
-    remove_assert=True,
-    override_nms_score_threshold=0.3,
-    max_batch_size=1,
-    calib_images_dir='ball_models/test_data',
-    num_calib_images=100,
-    )
 
-print('Post-Optimization Run:')
-
-#
-# Save optimized graph on a file
-#
-# references:
-#   - https://medium.com/@prasadpal107/saving-freezing-optimizing-for-inference-restoring-of-tensorflow-models-b4146deb21b5
-#   - https://docs.nvidia.com/deeplearning/frameworks/tf-trt-user-guide/index.html
-#
-
-# Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
-print('Importing graph...')
-detection_graph = tf.Graph()
-with detection_graph.as_default():
-    od_graph_def = tf.GraphDef()
-    tf.import_graph_def(frozen_graph_optimized, name='')
-    with tf.gfile.FastGFile('ball_models/optimized_model_INT8/optimized_graph.pb', "w") as f:
-        f.write(frozen_graph_optimized.SerializeToString())
-print('Importing graph completed')
-
-
-PATH_TO_LABELS = 'ball_models/ball_label_map.pbtxt'
-PATH_TO_TEST_IMAGES_DIR = 'ball_models/test_data' #Change the dataset and view the detections
-OUT_PATH = 'ball_models/test_result_INT8'
-
-if not os.path.exists(OUT_PATH):
-    os.makedirs(OUT_PATH)
-
-detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
-detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
-print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 print("\tFP32")
@@ -530,6 +475,57 @@ print('Importing graph completed')
 PATH_TO_LABELS = 'ball_models/ball_label_map.pbtxt'
 PATH_TO_TEST_IMAGES_DIR = 'ball_models/test_data' #Change the dataset and view the detections
 OUT_PATH = 'ball_models/test_result_FP16'
+
+if not os.path.exists(OUT_PATH):
+    os.makedirs(OUT_PATH)
+
+detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+detect_frames(PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
+
+
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+print("\tINT8")
+# optimize model using source model
+frozen_graph_optimized = optimize_model(
+    config_path=config_path,
+    checkpoint_path=checkpoint_path,
+    use_trt=True,
+    precision_mode="INT8",
+    force_nms_cpu=True,
+    replace_relu6=True,
+    remove_assert=True,
+    override_nms_score_threshold=0.3,
+    max_batch_size=1,
+    calib_images_dir='ball_models/test_data',
+    num_calib_images=100,
+    )
+
+print('Post-Optimization Run:')
+
+#
+# Save optimized graph on a file
+#
+# references:
+#   - https://medium.com/@prasadpal107/saving-freezing-optimizing-for-inference-restoring-of-tensorflow-models-b4146deb21b5
+#   - https://docs.nvidia.com/deeplearning/frameworks/tf-trt-user-guide/index.html
+#
+
+# Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
+print('Importing graph...')
+detection_graph = tf.Graph()
+with detection_graph.as_default():
+    od_graph_def = tf.GraphDef()
+    tf.import_graph_def(frozen_graph_optimized, name='')
+    with tf.gfile.FastGFile('ball_models/optimized_model_INT8/optimized_graph.pb', "w") as f:
+        f.write(frozen_graph_optimized.SerializeToString())
+print('Importing graph completed')
+
+
+PATH_TO_LABELS = 'ball_models/ball_label_map.pbtxt'
+PATH_TO_TEST_IMAGES_DIR = 'ball_models/test_data' #Change the dataset and view the detections
+OUT_PATH = 'ball_models/test_result_INT8'
 
 if not os.path.exists(OUT_PATH):
     os.makedirs(OUT_PATH)
