@@ -108,6 +108,33 @@ def detect_frames(path_to_labels,
                     break
             print("mean = {}, std = {}".format(np.mean(timings), np.std(timings)))
 
+            # trace
+            print('TRACE')
+            options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+            run_metadata = tf.RunMetadata()
+            for _ in range(10):
+                tic = time.time()
+                (boxes, scores, classes, num) = sess.run(
+                    [detection_boxes, detection_scores, detection_classes, num_detections],
+                    feed_dict={image_tensor: image_np_expanded},
+                    options=options,
+                    run_metadata=run_metadata
+                    )
+                toc = time.time()
+                t_diff = toc - tic
+                prog = 'Completed current frame in: %.6f seconds. %% (Total: %.6f secconds)' % (t_diff, total_time)
+                print('{}\r'.format(prog))
+            from tensorflow.python.client import timeline
+            fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+            chrome_trace = fetched_timeline.generate_chrome_trace_format()
+
+            with open(os.path.join(output_path, 'full_trace.json'), 'w') as f:
+                f.write(chrome_trace)
+                print('Chrome trace generated.')
+
+            import sys
+            sys.exit()
+
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 print('\tNative Frozen Model')
 path_to_graph = join('ball_models/frozen_model','frozen_inference_graph.pb') 
