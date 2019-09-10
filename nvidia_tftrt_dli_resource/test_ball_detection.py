@@ -52,7 +52,7 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"]="0" #selects a specific device
 
 # OpenCV library
-import cv2
+from PIL import Image
 
 # more helper functions for detection tasks 
 
@@ -117,16 +117,13 @@ def detect_frames(path_to_labels,
                               os.listdir(frames_path)
                               if os.path.isfile(join(frames_path, name))])
 
-            reference_image = os.listdir(data_folder)[0]
-            image = cv2.imread(join(data_folder, reference_image))
-            height, width, channels = image.shape
             number_of_tests = 10
             counter = 1
             total_time = 0
             print('Running Inference:')
             for fdx, file_name in \
                     enumerate(sorted(os.listdir(data_folder))):
-                image = cv2.imread(join(frames_path, file_name))
+                image = Image.open(join(frames_path, file_name))
                 image_np = np.array(image)
                 # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
                 image_np_expanded = np.expand_dims(image_np, axis=0)
@@ -139,7 +136,7 @@ def detect_frames(path_to_labels,
                 total_time = total_time + t_diff
                 # Visualization of the results of a detection.
                 vis_util.visualize_boxes_and_labels_on_image_array(
-                    image,
+                    image_np,
                     np.squeeze(boxes),
                     np.squeeze(classes).astype(np.int32),
                     np.squeeze(scores),
@@ -147,12 +144,9 @@ def detect_frames(path_to_labels,
                     use_normalized_coordinates=True,
                     line_thickness=7,
                     min_score_thresh=0.5)
-                cv2.imwrite(join(output_path, file_name), image)
-                plt.figure(figsize=(6,3))
-                plt.imshow(image.astype(np.uint8))
-                plt.axis('off')
-#                plt.show()
-                prog = 'Completed current frame in: %.3f seconds. %% (Total: %.3f secconds)' % (t_diff, total_time)
+                image = Image.fromarray(image_np, 'RGB')
+                image.save(join(output_path, file_name))
+                prog = 'Completed current frame in: %.6f seconds. %% (Total: %.6f secconds)' % (t_diff, total_time)
                 print('{}\r'.format(prog))
                 counter = counter + 1
                 if counter > number_of_tests:
@@ -362,8 +356,9 @@ def optimize_model(config_path,
                         batch_images = []
                         for image_path in image_paths[image_idx:image_idx+max_batch_size]:
                             #image = _read_image(image_path, calib_image_shape)
-                            image = cv2.imread(image_path)
-                            batch_images.append(image)
+                            image = Image.open(image_path)
+                            image_np = np.array(image)
+                            batch_images.append(image_np)
 
                         # execute batch of images
                         boxes, classes, scores, num_detections = tf_sess.run(

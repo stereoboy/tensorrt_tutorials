@@ -30,7 +30,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]="0" #selects a specific device
 
 
 # OpenCV library
-import cv2
+from PIL import Image
 
 # more helper functions for detection tasks 
 from object_detection.utils import label_map_util
@@ -67,9 +67,6 @@ def detect_frames(path_to_labels,
                               os.listdir(frames_path)
                               if os.path.isfile(join(frames_path, name))])
 
-            reference_image = os.listdir(data_folder)[0]
-            image = cv2.imread(join(data_folder, reference_image))
-            height, width, channels = image.shape
             number_of_tests = 100
             counter = 1
             timings = []
@@ -77,7 +74,8 @@ def detect_frames(path_to_labels,
             print('Running Inference:')
             for fdx, file_name in \
                     enumerate(sorted(os.listdir(data_folder))):
-                image = cv2.imread(join(frames_path, file_name))
+                image = Image.open(join(frames_path, file_name))
+
                 image_np = np.array(image)
                 # Expand dimensions since the model expects images to have shape: [1, None, None, 3]
                 image_np_expanded = np.expand_dims(image_np, axis=0)
@@ -90,7 +88,7 @@ def detect_frames(path_to_labels,
                 total_time = total_time + t_diff
                 # Visualization of the results of a detection.
                 vis_util.visualize_boxes_and_labels_on_image_array(
-                    image,
+                    image_np,
                     np.squeeze(boxes),
                     np.squeeze(classes).astype(np.int32),
                     np.squeeze(scores),
@@ -98,8 +96,9 @@ def detect_frames(path_to_labels,
                     use_normalized_coordinates=True,
                     line_thickness=7,
                     min_score_thresh=0.5)
-                cv2.imwrite(join(output_path, file_name), image)
-                prog = 'Completed current frame in: %.3f seconds. %% (Total: %.3f secconds)' % (t_diff, total_time)
+                image = Image.fromarray(image_np, 'RGB')
+                image.save(join(output_path, file_name))
+                prog = 'Completed current frame in: %.6f seconds. %% (Total: %.6f secconds)' % (t_diff, total_time)
 
                 if counter > 10:
                     timings.append(1000*t_diff)
