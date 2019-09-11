@@ -12,8 +12,6 @@ import pdb
 
 # tensorflow libraries    
 import tensorflow as tf
-import tensorflow.contrib.tensorrt as trt
-
 # more helper functions for detection tasks 
 
 from tensorrt.graph_utils import force_nms_cpu as f_force_nms_cpu
@@ -237,6 +235,7 @@ def optimize_model(config_path,
 
     tf_config = tf.ConfigProto()
     tf_config.gpu_options.allow_growth = True
+#    tf_config.log_device_placement = True
 
     # export inference graph to file (initial), this will create tmp_dir
 #    with tf.Session(config=tf_config):
@@ -267,15 +266,39 @@ def optimize_model(config_path,
 
     # optionally perform TensorRT optimization
     if use_trt:
+        #use_calibration = True if precision_mode == 'INT8' else False
+        use_calibration = True
         with tf.Graph().as_default() as tf_graph:
             with tf.Session(config=tf_config) as tf_sess:
-                frozen_graph = trt.create_inference_graph(
-                    input_graph_def=frozen_graph,
-                    outputs=output_names,
-                    max_batch_size=max_batch_size,
-                    max_workspace_size_bytes=max_workspace_size_bytes,
-                    precision_mode=precision_mode,
-                    minimum_segment_size=minimum_segment_size)
+                if tf.__version__ == '1.13.1':
+                    import tensorflow.contrib.tensorrt as trt
+                    frozen_graph = trt.create_inference_graph(
+                        input_graph_def=frozen_graph,
+                        outputs=output_names,
+                        max_batch_size=max_batch_size,
+                        max_workspace_size_bytes=max_workspace_size_bytes,
+                        precision_mode=precision_mode,
+                        minimum_segment_size=minimum_segment_size)
+                elif tf.__version__ == '1.14.0':
+                    #
+                    # references: 
+                    #  - https://docs.nvidia.com/deeplearning/frameworks/tf-trt-user-guide/index.html
+                    #  - https://github.com/tensorflow/tensorrt/blob/master/tftrt/examples/object_detection/object_detection.py
+                    #
+                    from tensorflow.python.compiler.tensorrt import trt_convert as trt
+                    converter = trt.TrtGraphConverter(
+                                    input_graph_def=frozen_graph,
+                                    nodes_blacklist=output_names,
+                                    max_batch_size=max_batch_size,
+                                    max_workspace_size_bytes=max_workspace_size_bytes,
+#                                    maximum_cached_engines=100,
+#                                    is_dynamic_op=True,
+                                    precision_mode=precision_mode,
+                                    minimum_segment_size=minimum_segment_size,
+                                    use_calibration=use_calibration)
+                    frozen_graph = converter.convert()
+                else:
+                    raise ValueError('unmatched tensorflow version. checkout version==1.13.1 or version==1.14.0')
 
                 # perform calibration for int8 precision
                 if precision_mode == 'INT8':
@@ -283,34 +306,63 @@ def optimize_model(config_path,
                     if calib_images_dir is None:
                         raise ValueError('calib_images_dir must be provided for int8 optimization.')
 
-                    tf.import_graph_def(frozen_graph, name='')
-                    tf_input = tf_graph.get_tensor_by_name(INPUT_NAME + ':0')
-                    tf_boxes = tf_graph.get_tensor_by_name(BOXES_NAME + ':0')
-                    tf_classes = tf_graph.get_tensor_by_name(CLASSES_NAME + ':0')
-                    tf_scores = tf_graph.get_tensor_by_name(SCORES_NAME + ':0')
-                    tf_num_detections = tf_graph.get_tensor_by_name(
-                        NUM_DETECTIONS_NAME + ':0')
+                    if tf.__version__ == '1.13.1':
+                        tf.import_graph_def(frozen_graph, name='')
+                        tf_input = tf_graph.get_tensor_by_name(INPUT_NAME + ':0')
+                        tf_boxes = tf_graph.get_tensor_by_name(BOXES_NAME + ':0')
+                        tf_classes = tf_graph.get_tensor_by_name(CLASSES_NAME + ':0')
+                        tf_scores = tf_graph.get_tensor_by_name(SCORES_NAME + ':0')
+                        tf_num_detections = tf_graph.get_tensor_by_name(
+                            NUM_DETECTIONS_NAME + ':0')
 
-                    image_paths = glob.glob(os.path.join(calib_images_dir, '*.jpg'))
-                    image_paths = image_paths[0:num_calib_images]
+                        image_paths = glob.glob(os.path.join(calib_images_dir, '*.jpg'))
+                        image_paths = image_paths[0:num_calib_images]
 
-                    for image_idx in tqdm.tqdm(range(0, len(image_paths), max_batch_size)):
+                        for image_idx in tqdm.tqdm(range(0, len(image_paths), max_batch_size)):
 
-                        # read batch of images
-                        batch_images = []
-                        for image_path in image_paths[image_idx:image_idx+max_batch_size]:
-                            #image = _read_image(image_path, calib_image_shape)
-                            image = Image.open(image_path)
-                            image_np = np.array(image)
-                            batch_images.append(image_np)
+                            # read batch of images
+                            batch_images = []
+                            for image_path in image_paths[image_idx:image_idx+max_batch_size]:
+                                #image = _read_image(image_path, calib_image_shape)
+                                image = Image.open(image_path)
+                                image_np = np.array(image)
+                                batch_images.append(image_np)
 
-                        # execute batch of images
-                        boxes, classes, scores, num_detections = tf_sess.run(
-                            [tf_boxes, tf_classes, tf_scores, tf_num_detections],
-                            feed_dict={tf_input: batch_images})
+                            # execute batch of images
+                            boxes, classes, scores, num_detections = tf_sess.run(
+                                [tf_boxes, tf_classes, tf_scores, tf_num_detections],
+                                feed_dict={tf_input: batch_images})
 
-                    #pdb.set_trace()
-                    frozen_graph = trt.calib_graph_to_infer_graph(frozen_graph)
+                        #pdb.set_trace()
+                        frozen_graph = trt.calib_graph_to_infer_graph(frozen_graph)
+                    elif tf.__version__ == '1.14.0':
+                        image_paths = glob.glob(os.path.join(calib_images_dir, '*.jpg'))
+                        image_paths = image_paths[0:num_calib_images]
+
+                        def feed_gen_func():
+                            for image_idx in tqdm.tqdm(range(0, len(image_paths), max_batch_size)):
+
+                                # read batch of images
+                                batch_images = []
+                                for image_path in image_paths[image_idx:image_idx+max_batch_size]:
+                                    #image = _read_image(image_path, calib_image_shape)
+                                    image = Image.open(image_path)
+                                    image_np = np.array(image)
+                                    batch_images.append(image_np)
+                                yield {INPUT_NAME + ':0': batch_images}
+
+                        gen = feed_gen_func()
+                        def feed_dict_fn():
+                            return next(gen)
+
+                        frozen_graph = converter.calibrate(
+                                            fetch_names=[
+                                                BOXES_NAME + ':0',
+                                                CLASSES_NAME + ':0',
+                                                SCORES_NAME + ':0',
+                                                NUM_DETECTIONS_NAME + ':0'],
+                                            num_runs=num_calib_images,
+                                            feed_dict_fn=feed_dict_fn)
 
     # re-enable variable batch size, this was forced to max
     # batch size during export to enable TensorRT optimization
