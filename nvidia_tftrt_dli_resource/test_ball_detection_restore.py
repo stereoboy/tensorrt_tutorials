@@ -102,3 +102,25 @@ OUT_PATH = 'ball_models/test_result_FP16'
 detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
+path_to_graph = join('ball_models/optimized_model_INT8','optimized_graph.pb')
+# Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+print('\tINT8 Optimized Model')
+print('Importing graph...')
+detection_graph = tf.Graph()
+with detection_graph.as_default():
+    optimized_graph_def = tf.GraphDef()
+    with tf.gfile.GFile(path_to_graph, 'rb') as fid:
+        optimized_graph = fid.read()
+        optimized_graph_def.ParseFromString(optimized_graph)
+        tf.import_graph_def(optimized_graph_def, name='')
+print('Importing graph completed')
+
+PATH_TO_LABELS = 'ball_models/ball_label_map.pbtxt'
+PATH_TO_TEST_IMAGES_DIR = 'ball_models/test_data' #Change the dataset and view the detections
+OUT_PATH = 'ball_models/test_result_INT8'
+
+detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
