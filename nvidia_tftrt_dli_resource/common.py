@@ -14,9 +14,9 @@ import pdb
 import tensorflow as tf
 # more helper functions for detection tasks 
 
-from tensorrt.graph_utils import force_nms_cpu as f_force_nms_cpu
-from tensorrt.graph_utils import replace_relu6 as f_replace_relu6
-from tensorrt.graph_utils import remove_assert as f_remove_assert
+from tensorrt_utils.graph_utils import force_nms_cpu as f_force_nms_cpu
+from tensorrt_utils.graph_utils import replace_relu6 as f_replace_relu6
+from tensorrt_utils.graph_utils import remove_assert as f_remove_assert
 
 from google.protobuf import text_format
 from object_detection.protos import pipeline_pb2, image_resizer_pb2
