@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-project(Cast LANGUAGES CXX)
+project(Cast
+  LANGUAGES CXX
+  VERSION ${TRT_VERSION}
+)
+
+message(STATUS "Building for Cast version: ${TRT_VERSION}, library version: ${TRT_SOVERSION}")
 
 # Enable all compile warnings
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -pedantic -Werror")
@@ -12,7 +17,7 @@ macro(set_ifndef var val)
     if (NOT ${var})
         set(${var} ${val})
     endif()
-    message(STATUS "Configurable variable ${var} set to ${${var}}")
+    #message(STATUS "Configurable variable ${var} set to ${${var}}")
 endmacro()
 
 # -------- CONFIGURATION --------
@@ -38,10 +43,16 @@ find_path(_CUDA_INC_DIR cuda_runtime_api.h HINTS ${CUDA_ROOT} PATH_SUFFIXES incl
 set_ifndef(CUDA_INC_DIR ${_CUDA_INC_DIR})
 
 # -------- BUILDING --------
+set(SHARED_TARGET cast)
 include_directories(${TRT_INCLUDE} ${CUDA_INC_DIR})
-add_library(cast MODULE
-  ${CMAKE_SOURCE_DIR}/Cast.cpp
+add_library(${SHARED_TARGET} MODULE
+  Cast.cpp
 )
 
+set_target_properties(${SHARED_TARGET} PROPERTIES
+  LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR}
+  VERSION ${TRT_VERSION}
+  SOVERSION ${TRT_SOVERSION}
+)
 # Link TensorRT's nvinfer lib
-target_link_libraries(cast PRIVATE ${NVINFER_LIB} ${CUBLAS_LIB})
+target_link_libraries(${SHARED_TARGET} PRIVATE ${NVINFER_LIB} ${CUBLAS_LIB})
