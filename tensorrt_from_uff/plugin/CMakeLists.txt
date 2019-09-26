@@ -43,5 +43,14 @@ project(TensorRT
 
 
 set(LIB_DIR ${CMAKE_BINARY_DIR})
+
+set(CUB_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/TensorRT/third_party/cub)
+set(PLUGIN_SOURCES)
+
+include_directories(common common/kernels)
+add_subdirectory(common)
+
+
 add_subdirectory(castPlugin)
 add_subdirectory(flattenConcatPlugin)
+add_subdirectory(gridAnchorPlugin)
