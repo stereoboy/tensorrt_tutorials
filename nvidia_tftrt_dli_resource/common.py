@@ -101,7 +101,9 @@ def detect_frames(detection_graph,
                 if counter > number_of_tests:
                     break
 
-            print("mean = %.4f, std = %.4f" % (np.mean(timings), np.std(timings)))
+            mean = np.mean(timings)
+            std  = np.std(timings)
+            print("mean = %.4f, std = %.4f" % (mean, std))
 
             # trace
             print('TRACE')
@@ -126,6 +128,9 @@ def detect_frames(detection_graph,
             with open(os.path.join(output_path, 'full_trace.json'), 'w') as f:
                 f.write(chrome_trace)
                 print('Chrome trace generated.')
+
+    return mean, std
+
 
 def optimize_model(config_path,
                    checkpoint_path,
