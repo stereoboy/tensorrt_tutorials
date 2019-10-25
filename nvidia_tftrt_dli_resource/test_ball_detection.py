@@ -22,8 +22,8 @@ try:
     import urllib2
 except ImportError:
     import urllib.request as urllib2
-    
-# tensorflow libraries    
+
+# tensorflow libraries
 import tensorflow as tf
 import tensorflow.contrib.tensorrt as trt
 
@@ -49,14 +49,14 @@ Model = namedtuple('Model', ['name', 'url', 'extract_dir'])
 
 FROZEN_GRAPH_PATH = 'ball_models/frozen_model/frozen_inference_graph.pb'
 
-config_path = "ball_models/frozen_model/pipeline.config"
-checkpoint_path = "ball_models/frozen_model/model.ckpt"
-print(config_path, checkpoint_path)
+CONFIG_PATH = "ball_models/frozen_model/pipeline.config"
+CHECKPOINT_PATH = "ball_models/frozen_model/model.ckpt"
+print(CONFIG_PATH, CHECKPOINT_PATH)
 
 
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 print("\tNative")
-path_to_graph = join('ball_models/frozen_model','frozen_inference_graph.pb') 
+path_to_graph = join('ball_models/frozen_model','frozen_inference_graph.pb')
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print('Importing graph...')
 detection_graph = tf.Graph()
@@ -72,10 +72,7 @@ PATH_TO_LABELS = 'ball_models/ball_label_map.pbtxt'
 PATH_TO_TEST_IMAGES_DIR = 'ball_models/test_data' #Change the dataset and view the detections
 OUT_PATH = 'ball_models/test_result'
 
-if not os.path.exists(OUT_PATH):
-    os.makedirs(OUT_PATH)
-
-
+detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 
 print("Optimization")
@@ -90,8 +87,8 @@ print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 print("\tFP32")
 # optimize model using source model
 frozen_graph_optimized = optimize_model(
-    config_path=config_path,
-    checkpoint_path=checkpoint_path,
+    config_path=CONFIG_PATH,
+    checkpoint_path=CHECKPOINT_PATH,
     frozen_graph_path=FROZEN_GRAPH_PATH,
     use_trt=True,
     precision_mode="FP32",
@@ -106,11 +103,16 @@ print('Post-Optimization Run:')
 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print('Importing graph...')
+
+PATH_TO_OPT_FP32 = 'ball_models/optimized_model_FP32'
+if not os.path.exists(PATH_TO_OPT_FP32):
+    os.makedirs(PATH_TO_OPT_FP32)
+
 detection_graph = tf.Graph()
 with detection_graph.as_default():
     od_graph_def = tf.GraphDef()
     tf.import_graph_def(frozen_graph_optimized, name='')
-    with tf.gfile.FastGFile('ball_models/optimized_model_FP32/optimized_graph.pb', "w") as f:
+    with tf.gfile.FastGFile(os.path.join(PATH_TO_OPT_FP32, 'optimized_graph.pb'), "w") as f:
         f.write(frozen_graph_optimized.SerializeToString())
 
     tf_config = tf.ConfigProto()
@@ -139,8 +141,8 @@ print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 print("\tFP16")
 # optimize model using source model
 frozen_graph_optimized = optimize_model(
-    config_path=config_path,
-    checkpoint_path=checkpoint_path,
+    config_path=CONFIG_PATH,
+    checkpoint_path=CHECKPOINT_PATH,
     frozen_graph_path=FROZEN_GRAPH_PATH,
     use_trt=True,
     precision_mode="FP16",
@@ -155,11 +157,16 @@ print('Post-Optimization Run:')
 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print('Importing graph...')
+
+PATH_TO_OPT_FP16 = 'ball_models/optimized_model_FP16'
+if not os.path.exists(PATH_TO_OPT_FP16):
+    os.makedirs(PATH_TO_OPT_FP16)
+
 detection_graph = tf.Graph()
 with detection_graph.as_default():
     od_graph_def = tf.GraphDef()
     tf.import_graph_def(frozen_graph_optimized, name='')
-    with tf.gfile.FastGFile('ball_models/optimized_model_FP16/optimized_graph.pb', "w") as f:
+    with tf.gfile.FastGFile(os.path.join(PATH_TO_OPT_FP16, 'optimized_graph.pb'), "w") as f:
         f.write(frozen_graph_optimized.SerializeToString())
 
     tf_config = tf.ConfigProto()
@@ -171,9 +178,6 @@ PATH_TO_LABELS = 'ball_models/ball_label_map.pbtxt'
 PATH_TO_TEST_IMAGES_DIR = 'ball_models/test_data' #Change the dataset and view the detections
 OUT_PATH = 'ball_models/test_result_FP16'
 
-if not os.path.exists(OUT_PATH):
-    os.makedirs(OUT_PATH)
-
 detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
@@ -183,8 +187,8 @@ print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 print("\tINT8")
 # optimize model using source model
 frozen_graph_optimized = optimize_model(
-    config_path=config_path,
-    checkpoint_path=checkpoint_path,
+    config_path=CONFIG_PATH,
+    checkpoint_path=CHECKPOINT_PATH,
     frozen_graph_path=FROZEN_GRAPH_PATH,
     use_trt=True,
     precision_mode="INT8",
@@ -209,11 +213,16 @@ print('Post-Optimization Run:')
 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print('Importing graph...')
+
+PATH_TO_OPT_INT8 = 'ball_models/optimized_model_INT8'
+if not os.path.exists(PATH_TO_OPT_INT8):
+    os.makedirs(PATH_TO_OPT_INT8)
+
 detection_graph = tf.Graph()
 with detection_graph.as_default():
     od_graph_def = tf.GraphDef()
     tf.import_graph_def(frozen_graph_optimized, name='')
-    with tf.gfile.FastGFile('ball_models/optimized_model_INT8/optimized_graph.pb', "w") as f:
+    with tf.gfile.FastGFile(os.path.join(PATH_TO_OPT_INT8, 'optimized_graph.pb'), "w") as f:
         f.write(frozen_graph_optimized.SerializeToString())
 print('Importing graph completed')
 
@@ -221,9 +230,6 @@ print('Importing graph completed')
 PATH_TO_LABELS = 'ball_models/ball_label_map.pbtxt'
 PATH_TO_TEST_IMAGES_DIR = 'ball_models/test_data' #Change the dataset and view the detections
 OUT_PATH = 'ball_models/test_result_INT8'
-
-if not os.path.exists(OUT_PATH):
-    os.makedirs(OUT_PATH)
 
 detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)

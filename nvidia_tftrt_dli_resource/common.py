@@ -101,7 +101,7 @@ def detect_frames(detection_graph,
                 if counter > number_of_tests:
                     break
 
-            print("mean = {}, std = {}".format(np.mean(timings), np.std(timings)))
+            print("mean = %.4f, std = %.4f" % (np.mean(timings), np.std(timings)))
 
             # trace
             print('TRACE')
