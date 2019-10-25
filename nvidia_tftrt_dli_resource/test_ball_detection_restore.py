@@ -59,7 +59,7 @@ detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH
 detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
-path_to_graph = join('ball_models/optimized_model_FP16','optimized_graph.pb') 
+path_to_graph = join('ball_models/optimized_model_FP32','optimized_graph.pb') 
 # Import a graph by reading it as a string, parsing this string then importing it using the tf.import_graph_def command
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 print('\tFP32 Optimized Model')
