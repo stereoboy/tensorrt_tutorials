@@ -53,7 +53,6 @@ CONFIG_PATH = "ball_models/frozen_model/pipeline.config"
 CHECKPOINT_PATH = "ball_models/frozen_model/model.ckpt"
 print(CONFIG_PATH, CHECKPOINT_PATH)
 
-
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 print("\tNative")
 path_to_graph = join('ball_models/frozen_model','frozen_inference_graph.pb')
@@ -74,14 +73,7 @@ OUT_PATH = 'ball_models/test_result'
 
 detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
 detect_frames(detection_graph, PATH_TO_LABELS, PATH_TO_TEST_IMAGES_DIR, OUT_PATH)
-
-print("Optimization")
-def _read_image(image_path, image_shape):
-    #image = Image.open(image_path).convert('RGB')
-    image = Image.open(image_path).convert('RGB')
-    if image_shape is not None:
-        image = image.resize(image_shape[::-1])
-    return np.array(image)
+print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
 print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 print("\tFP32")
