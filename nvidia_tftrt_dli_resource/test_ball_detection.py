@@ -107,8 +107,8 @@ with detection_graph.as_default():
     with tf.gfile.FastGFile(os.path.join(PATH_TO_OPT_FP32, 'optimized_graph.pb'), "w") as f:
         f.write(frozen_graph_optimized.SerializeToString())
 
-    tf_config = tf.ConfigProto()
-    tf_config.gpu_options.allow_growth = True
+#    tf_config = tf.ConfigProto()
+#    tf_config.gpu_options.allow_growth = True
 #    with tf.Session(config=tf_config) as tf_sess:
 #        init = tf.global_variables_initializer()
 #        tf_sess.run(init)
@@ -161,8 +161,6 @@ with detection_graph.as_default():
     with tf.gfile.FastGFile(os.path.join(PATH_TO_OPT_FP16, 'optimized_graph.pb'), "w") as f:
         f.write(frozen_graph_optimized.SerializeToString())
 
-    tf_config = tf.ConfigProto()
-    tf_config.gpu_options.allow_growth = True
 print('Importing graph completed')
 
 
