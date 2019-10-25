@@ -185,6 +185,6 @@ ax.yaxis.grid(True)
 
 # Save the figure and show
 plt.tight_layout()
-plt.savefig('bar_plot.png')
+plt.savefig('plot_{}.png'.format(timestamp))
 plt.show()
 
