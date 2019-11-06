@@ -64,8 +64,11 @@ class Statics():
         print_str += "\n"
         print(print_str)
 
+        log_path = 'logs'
+        if not os.path.exists(log_path):
+            os.makedirs(log_path)
         timestamp = datetime.now().strftime("ball_%Y_%m%d_%H%M%S")
-        with open('result_{}.log'.format(timestamp), 'w+') as f:
+        with open(os.path.join(log_path, 'result_{}.log'.format(timestamp)), 'w+') as f:
             f.write(print_str)
 
         #matplotlib.use("TkAgg")
@@ -94,7 +97,7 @@ class Statics():
 
         # Save the figure and show
         plt.tight_layout()
-        plt.savefig('plot_{}.png'.format(timestamp))
+        plt.savefig(os.path.join(log_path, 'plot_{}.png'.format(timestamp)))
         plt.show()
 
 def test_native(queue):
