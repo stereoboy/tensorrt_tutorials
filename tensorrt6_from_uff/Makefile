@@ -36,13 +36,7 @@ export LIBDIR
 export CUDA_TRIPLE
 export CUBLAS_TRIPLE
 export DLSW_TRIPLE
-samples=sampleCharRNN sampleDynamicReshape sampleFasterRCNN sampleGoogleNet sampleINT8 sampleINT8API sampleMLP sampleMNIST sampleMNISTAPI sampleNMT sampleMovieLens sampleOnnxMNIST samplePlugin sampleUffPluginV2Ext sampleReformatFreeIO sampleSSD sampleUffMNIST sampleUffSSD trtexec
-
-# sampleMovieLensMPS should only be compiled for Linux targets.
-# sample uses Linux specific shared memory and IPC libraries.
-ifeq ($(TARGET),x86_64)
-samples += sampleMovieLensMPS
-endif
+samples=sampleMNIST sampleMobilenetV1
 
 # sampleNvmedia/dlaSafetyRuntime/dlaSafetyBuilder should only be compiled with DLA enabled.
 ifeq ($(ENABLE_DLA),1)
