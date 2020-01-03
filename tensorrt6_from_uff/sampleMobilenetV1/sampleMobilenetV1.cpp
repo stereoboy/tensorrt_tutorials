@@ -72,6 +72,8 @@
 #include <fstream>
 #include <sstream>
 
+#include <chrono>
+
 const std::string gSampleName = "TensorRT.sample_uff_ssd";
 
 //!
@@ -323,27 +325,37 @@ bool SampleUffSSD::infer()
         return false;
     }
 
-    // Read the input data into the managed buffers
-    assert(mParams.inputTensorNames.size() == 1);
-    if (!processInput(buffers))
+    for (int i = 0; i < 1000; i ++)
     {
-        return false;
+        auto startTime = std::chrono::high_resolution_clock::now();
+
+        std::cout<< startTime << std::endl;
+        // Read the input data into the managed buffers
+        assert(mParams.inputTensorNames.size() == 1);
+        if (!processInput(buffers))
+        {
+            return false;
+        }
+
+        // Memcpy from host input buffers to device input buffers
+        buffers.copyInputToDevice();
+        //std::cout<< "buffers.copyInputToDevice();" << std::endl;
+
+        bool status = context->execute(mParams.batchSize, buffers.getDeviceBindings().data());
+        if (!status)
+        {
+            return false;
+        }
+
+        // Memcpy from device output buffers to host output buffers
+        buffers.copyOutputToHost();
+        //std::cout<< "buffers.copyOutputToHost();" << std::endl;
+
+        auto endTime = std::chrono::high_resolution_clock::now();
+        float totalTime = std::chrono::duration<float, std::milli>(endTime - startTime).count();
+        std::cout<< "context->execute(...); elapsed time=" << totalTime << std::endl;
     }
 
-    // Memcpy from host input buffers to device input buffers
-    buffers.copyInputToDevice();
-    std::cout<< "buffers.copyInputToDevice();" << std::endl;
-
-    bool status = context->execute(mParams.batchSize, buffers.getDeviceBindings().data());
-    if (!status)
-    {
-        return false;
-    }
-    std::cout<< "context->execute(...);" << std::endl;
-
-    // Memcpy from device output buffers to host output buffers
-    buffers.copyOutputToHost();
-    std::cout<< "buffers.copyOutputToHost();" << std::endl;
 
     // Post-process detections and verify results
     if (!verifyOutput(buffers))
