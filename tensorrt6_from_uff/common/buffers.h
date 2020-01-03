@@ -269,9 +269,31 @@ public:
         : mEngine(engine)
         , mBatchSize(batchSize)
     {
+        std::cout << "Create BufferManager()" << std::endl;
+        std::cout << "mEngine->getNbBindings()=" << mEngine->getNbBindings() << std::endl;
+
         // Create host and device buffers
         for (int i = 0; i < mEngine->getNbBindings(); i++)
         {
+            std::cout << "\tmEngine->getBindingName(i)=" <<  mEngine->getBindingName(i) << std::endl;
+            std::cout << "\tmEngine->getBindingDimensions(i)=" << mEngine->getBindingDimensions(i) << std::endl;
+            std::cout << "\tmEngine->getBindingDataType(i)=";
+            auto dataType = mEngine->getBindingDataType(i);
+            switch(dataType)
+            {
+              case nvinfer1::DataType::kINT8:
+                std::cout << "nvinfer1::kINT8" << std::endl; break;
+              case nvinfer1::DataType::kINT32:
+                std::cout << "nvinfer1::kINT32" << std::endl; break;
+              case nvinfer1::DataType::kHALF:
+                std::cout << "nvinfer1::kHALF" << std::endl; break;
+              case nvinfer1::DataType::kFLOAT:
+                std::cout << "nvinfer1::kFLOAT" << std::endl; break;
+              default:
+                std::cout << "UNKNOWN" << std::endl; break;
+                break;
+
+            }
             auto dims = context ? context->getBindingDimensions(i) : mEngine->getBindingDimensions(i);
             size_t vol = context ? 1 : static_cast<size_t>(mBatchSize);
             nvinfer1::DataType type = mEngine->getBindingDataType(i);

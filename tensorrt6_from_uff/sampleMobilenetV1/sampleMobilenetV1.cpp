@@ -69,6 +69,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <fstream>
 #include <sstream>
 
 const std::string gSampleName = "TensorRT.sample_uff_ssd";
@@ -134,6 +135,7 @@ private:
     bool constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& builder,
         SampleUniquePtr<nvinfer1::INetworkDefinition>& network, SampleUniquePtr<nvinfer1::IBuilderConfig>& config,
         SampleUniquePtr<nvuffparser::IUffParser>& parser);
+    bool constructNetwork(void);
 
     //!
     //! \brief Reads the input and mean data, preprocesses, and stores the result in a managed buffer
@@ -163,7 +165,7 @@ bool SampleUffSSD::build()
     {
         return false;
     }
-
+#if 0
     auto network = SampleUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetwork());
     if (!network)
     {
@@ -183,17 +185,23 @@ bool SampleUffSSD::build()
     }
 
     auto constructed = constructNetwork(builder, network, config, parser);
+#else
+    auto constructed = constructNetwork();
+#endif
     if (!constructed)
     {
         return false;
     }
 
+#if 0
     assert(network->getNbInputs() == 1);
     mInputDims = network->getInput(0)->getDimensions();
     assert(mInputDims.nbDims == 3);
 
     assert(network->getNbOutputs() == 2);
+#else
 
+#endif
     return true;
 }
 
@@ -244,9 +252,53 @@ bool SampleUffSSD::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& builder
         config->setInt8Calibrator(calibrator.get());
     }
 
+
     mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(builder->buildEngineWithConfig(*network, *config), samplesCommon::InferDeleter());
     if (!mEngine)
     {
+        std::cerr<< "deserializeEngine Failed" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+bool SampleUffSSD::constructNetwork()
+{
+    void *dlh = dlopen("./build/plugins/NMSOptPlugin/libnmsoptplugin.so", RTLD_LAZY);
+    if (nullptr == dlh)
+    {
+        std::cerr<< "Failed to load plugin libnmsoptplugin.so." << std::endl;
+        return false;
+    }
+
+    IRuntime* runtime = nvinfer1::createInferRuntime(gLogger.getTRTLogger());
+    if (nullptr == runtime)
+    {
+        std::cerr<< "Failed to create InferRuntime." << std::endl;
+        return false;
+    }
+
+    std::vector<char> trtEngineStream;
+    std::string engineName = "./SSDMobileNet/ssd-small-SingleStream-gpu-b1-int8.plan";
+    std::ifstream file(engineName, std::ios::binary);
+    if (!file.good())
+    {
+        std::cerr<< "could not find serialized plan file." << std::endl;
+        return false;
+    }
+
+    file.seekg(0, file.end);
+    size_t size = file.tellg();
+    file.seekg(0, file.beg);
+    trtEngineStream.resize(size);
+    file.read(trtEngineStream.data(), size);
+    file.close();
+
+    mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(runtime->deserializeCudaEngine(trtEngineStream.data(), size, nullptr), samplesCommon::InferDeleter());
+    if (!mEngine)
+    {
+        std::cerr<< "deserializeEngine Failed" << std::endl;
         return false;
     }
 
@@ -261,6 +313,7 @@ bool SampleUffSSD::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& builder
 //!
 bool SampleUffSSD::infer()
 {
+    std::cout << ">>>" << __FUNCTION__ << std::endl;
     // Create RAII buffer manager object
     samplesCommon::BufferManager buffers(mEngine, mParams.batchSize);
 
@@ -279,15 +332,18 @@ bool SampleUffSSD::infer()
 
     // Memcpy from host input buffers to device input buffers
     buffers.copyInputToDevice();
+    std::cout<< "buffers.copyInputToDevice();" << std::endl;
 
     bool status = context->execute(mParams.batchSize, buffers.getDeviceBindings().data());
     if (!status)
     {
         return false;
     }
+    std::cout<< "context->execute(...);" << std::endl;
 
     // Memcpy from device output buffers to host output buffers
     buffers.copyOutputToHost();
+    std::cout<< "buffers.copyOutputToHost();" << std::endl;
 
     // Post-process detections and verify results
     if (!verifyOutput(buffers))
@@ -295,6 +351,7 @@ bool SampleUffSSD::infer()
         return false;
     }
 
+    std::cout << "<<<" << __FUNCTION__ << std::endl;
     return true;
 }
 
@@ -315,10 +372,18 @@ bool SampleUffSSD::teardown()
 //!
 bool SampleUffSSD::processInput(const samplesCommon::BufferManager& buffers)
 {
+#if 0
     const int inputC = mInputDims.d[0];
     const int inputH = mInputDims.d[1];
     const int inputW = mInputDims.d[2];
     const int batchSize = mParams.batchSize;
+#else
+    std::cout << ">>>" << __FUNCTION__ << std::endl;
+    const int inputC = 3;
+    const int inputH = 300;
+    const int inputW = 300;
+    const int batchSize = mParams.batchSize;
+#endif
 
     // Available images
     std::vector<std::string> imageList = {"dog.ppm", "bus.ppm"};
@@ -329,6 +394,7 @@ bool SampleUffSSD::processInput(const samplesCommon::BufferManager& buffers)
         readPPMFile(locateFile(imageList[i], mParams.dataDirs), mPPMs[i]);
     }
 
+#if 0
     float* hostDataBuffer = static_cast<float*>(buffers.getHostBuffer(mParams.inputTensorNames[0]));
     // Host memory for input buffer
     for (int i = 0, volImg = inputC * inputH * inputW; i < mParams.batchSize; ++i)
@@ -343,7 +409,24 @@ bool SampleUffSSD::processInput(const samplesCommon::BufferManager& buffers)
             }
         }
     }
+#else
+    int* hostDataBuffer = static_cast<int*>(buffers.getHostBuffer(mParams.inputTensorNames[0]));
+    // Host memory for input buffer
+    for (int i = 0, volImg = inputC * inputH * inputW; i < mParams.batchSize; ++i)
+    {
+        for (int c = 0; c < inputC; ++c)
+        {
+            // The color image to input should be in BGR order
+            for (unsigned j = 0, volChl = inputH * inputW; j < volChl; ++j)
+            {
+                hostDataBuffer[i * volImg + c * volChl + j]
+                    = int((2.0 / 255.0) * float(mPPMs[i].buffer[j * inputC + c]) - 1.0);
+            }
+        }
+    }
+#endif
 
+    std::cout << "<<<" << __FUNCTION__ << std::endl;
     return true;
 }
 
@@ -354,8 +437,13 @@ bool SampleUffSSD::processInput(const samplesCommon::BufferManager& buffers)
 //!
 bool SampleUffSSD::verifyOutput(const samplesCommon::BufferManager& buffers)
 {
+#if 0
     const int inputH = mInputDims.d[1];
     const int inputW = mInputDims.d[2];
+#else
+    const int inputH = 300;
+    const int inputW = 300;
+#endif
     const int batchSize = mParams.batchSize;
     const int keepTopK = mParams.keepTopK;
     const float visualThreshold = mParams.visualThreshold;
@@ -428,6 +516,7 @@ bool SampleUffSSD::verifyOutput(const samplesCommon::BufferManager& buffers)
 SampleUffSSDParams initializeSampleParams(const samplesCommon::Args& args)
 {
     SampleUffSSDParams params;
+#if 0
     if (args.dataDirs.empty()) //!< Use default directories if user hasn't provided directory paths
     {
         params.dataDirs.push_back("data/ssd/");
@@ -441,10 +530,17 @@ SampleUffSSDParams initializeSampleParams(const samplesCommon::Args& args)
     {
         params.dataDirs = args.dataDirs;
     }
+#else
+    params.dataDirs.push_back("./data/ssd/");
+#endif
     params.uffFileName = "sample_ssd_relu6.uff";
     params.labelsFileName = "ssd_coco_labels.txt";
     params.inputTensorNames.push_back("Input");
+#if 0
     params.batchSize = 2;
+#else
+    params.batchSize = 1;
+#endif
     params.outputTensorNames.push_back("NMS");
     params.outputTensorNames.push_back("NMS_1");
     params.dlaCore = args.useDLACore;
