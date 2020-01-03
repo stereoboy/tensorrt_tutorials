@@ -433,6 +433,7 @@ private:
 
     void* getBuffer(const bool isHost, const std::string& tensorName) const
     {
+        std::cout << "getBuffer(" << tensorName << ")" << std::endl;
         int index = mEngine->getBindingIndex(tensorName.c_str());
         if (index == -1)
             return nullptr;

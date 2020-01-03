@@ -410,7 +410,7 @@ bool SampleUffSSD::processInput(const samplesCommon::BufferManager& buffers)
         }
     }
 #else
-    int* hostDataBuffer = static_cast<int*>(buffers.getHostBuffer(mParams.inputTensorNames[0]));
+    char* hostDataBuffer = static_cast<char*>(buffers.getHostBuffer(mParams.inputTensorNames[0]));
     // Host memory for input buffer
     for (int i = 0, volImg = inputC * inputH * inputW; i < mParams.batchSize; ++i)
     {
@@ -449,9 +449,12 @@ bool SampleUffSSD::verifyOutput(const samplesCommon::BufferManager& buffers)
     const float visualThreshold = mParams.visualThreshold;
     const int outputClsSize = mParams.outputClsSize;
 
+#if 0
     const float* detectionOut = static_cast<const float*>(buffers.getHostBuffer(mParams.outputTensorNames[0]));
     const int* keepCount = static_cast<const int*>(buffers.getHostBuffer(mParams.outputTensorNames[1]));
-
+#else
+    const float* detectionOut = static_cast<const float*>(buffers.getHostBuffer(mParams.outputTensorNames[0]));
+#endif
     std::vector<std::string> classes(outputClsSize);
 
     // Gather class labels
@@ -464,7 +467,7 @@ bool SampleUffSSD::verifyOutput(const samplesCommon::BufferManager& buffers)
     }
 
     bool pass = true;
-
+#if 0
     for (int p = 0; p < batchSize; ++p)
     {
         int numDetections = 0;
@@ -506,7 +509,7 @@ bool SampleUffSSD::verifyOutput(const samplesCommon::BufferManager& buffers)
         pass &= correctDetection;
         pass &= numDetections >= 1;
     }
-
+#endif
     return pass;
 }
 
@@ -538,8 +541,11 @@ SampleUffSSDParams initializeSampleParams(const samplesCommon::Args& args)
     params.inputTensorNames.push_back("Input");
 #if 0
     params.batchSize = 2;
+    params.outputTensorNames.push_back("NMS");
+    params.outputTensorNames.push_back("NMS_1");
 #else
     params.batchSize = 1;
+    params.outputTensorNames.push_back("Postprocessor");
 #endif
     params.outputTensorNames.push_back("NMS");
     params.outputTensorNames.push_back("NMS_1");
