@@ -547,8 +547,6 @@ SampleUffSSDParams initializeSampleParams(const samplesCommon::Args& args)
     params.batchSize = 1;
     params.outputTensorNames.push_back("Postprocessor");
 #endif
-    params.outputTensorNames.push_back("NMS");
-    params.outputTensorNames.push_back("NMS_1");
     params.dlaCore = args.useDLACore;
     params.int8 = args.runInInt8;
     params.fp16 = args.runInFp16;
