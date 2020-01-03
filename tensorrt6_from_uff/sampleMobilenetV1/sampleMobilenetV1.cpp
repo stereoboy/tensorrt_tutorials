@@ -47,50 +47,65 @@
  * Users Notice.
  */
 
-//! \file sampleMNIST.cpp
-//! \brief This file contains the implementation of the MNIST sample.
 //!
-//! It builds a TensorRT engine by importing a trained MNIST Caffe model. It uses the engine to run
-//! inference on an input image of a digit.
+//! SampleUffSSD.cpp
+//! This file contains the implementation of the Uff SSD sample. It creates the network using
+//! the SSD UFF model.
 //! It can be run with the following command line:
-//! Command: ./sample_mnist [-h or --help] [-d=/path/to/data/dir or --datadir=/path/to/data/dir]
+//! Command: ./sample_uff_ssd [-h or --help] [-d=/path/to/data/dir or --datadir=/path/to/data/dir]
+//!
 
+#include "BatchStream.h"
+#include "EntropyCalibrator.h"
 #include "argsParser.h"
 #include "buffers.h"
 #include "common.h"
 #include "logger.h"
 
-#include "NvCaffeParser.h"
 #include "NvInfer.h"
-
-#include <algorithm>
-#include <cassert>
-#include <cmath>
+#include "NvUffParser.h"
 #include <cuda_runtime_api.h>
+
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
-const std::string gSampleName = "TensorRT.sample_mobilenetv1";
+const std::string gSampleName = "TensorRT.sample_uff_ssd";
 
 //!
-//! \brief  The SampleMNIST class implements the MNIST sample
+//! \brief The SampleUffSSDParams structure groups the additional parameters required by
+//!         the Uff SSD sample.
 //!
-//! \details It creates the network using a trained Caffe MNIST classification model
+struct SampleUffSSDParams : public samplesCommon::SampleParams
+{
+    std::string uffFileName;    //!< The file name of the UFF model to use
+    std::string labelsFileName; //!< The file namefo the class labels
+    int outputClsSize;          //!< The number of output classes
+    int calBatchSize;           //!< The size of calibration batch
+    int nbCalBatches;           //!< The number of batches for calibration
+    int keepTopK;               //!< The maximum number of detection post-NMS
+    float visualThreshold;      //!< The minimum score threshold to consider a detection
+};
+
+//! \brief  The SampleUffSSD class implements the SSD sample
 //!
-class SampleMNIST
+//! \details It creates the network using an UFF model
+//!
+class SampleUffSSD
 {
     template <typename T>
     using SampleUniquePtr = std::unique_ptr<T, samplesCommon::InferDeleter>;
 
 public:
-    SampleMNIST(const samplesCommon::CaffeSampleParams& params)
+    SampleUffSSD(const SampleUffSSDParams& params)
         : mParams(params)
+        , mEngine(nullptr)
     {
     }
 
     //!
-    //! \brief Builds the network engine
+    //! \brief Function builds the network engine
     //!
     bool build();
 
@@ -100,46 +115,49 @@ public:
     bool infer();
 
     //!
-    //! \brief Used to clean up any state created in the sample class
+    //! \brief Cleans up any state created in the sample class
     //!
     bool teardown();
 
 private:
+    SampleUffSSDParams mParams; //!< The parameters for the sample.
+
+    nvinfer1::Dims mInputDims; //!< The dimensions of the input to the network.
+
+    std::vector<samplesCommon::PPM<3, 300, 300>> mPPMs; //!< PPMs of test images
+
+    std::shared_ptr<nvinfer1::ICudaEngine> mEngine; //!< The TensorRT engine used to run the network
+
     //!
-    //! \brief uses a Caffe parser to create the MNIST Network and marks the
-    //!        output layers
+    //! \brief Parses an UFF model for SSD and creates a TensorRT network
     //!
-    void constructNetwork(SampleUniquePtr<nvcaffeparser1::ICaffeParser>& parser, SampleUniquePtr<nvinfer1::INetworkDefinition>& network);
+    bool constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& builder,
+        SampleUniquePtr<nvinfer1::INetworkDefinition>& network, SampleUniquePtr<nvinfer1::IBuilderConfig>& config,
+        SampleUniquePtr<nvuffparser::IUffParser>& parser);
 
     //!
     //! \brief Reads the input and mean data, preprocesses, and stores the result in a managed buffer
     //!
-    bool processInput(const samplesCommon::BufferManager& buffers, const std::string& inputTensorName, int inputFileIdx) const;
+    bool processInput(const samplesCommon::BufferManager& buffers);
 
     //!
-    //! \brief Verifies that the output is correct and prints it
+    //! \brief Filters output detections and verify results
     //!
-    bool verifyOutput(const samplesCommon::BufferManager& buffers, const std::string& outputTensorName, int groundTruthDigit) const;
-
-    std::shared_ptr<nvinfer1::ICudaEngine> mEngine{nullptr}; //!< The TensorRT engine used to run the network
-
-    samplesCommon::CaffeSampleParams mParams; //!< The parameters for the sample.
-
-    nvinfer1::Dims mInputDims; //!< The dimensions of the input to the network.
-
-    SampleUniquePtr<nvcaffeparser1::IBinaryProtoBlob> mMeanBlob; //! the mean blob, which we need to keep around until build is done
+    bool verifyOutput(const samplesCommon::BufferManager& buffers);
 };
 
 //!
 //! \brief Creates the network, configures the builder and creates the network engine
 //!
-//! \details This function creates the MNIST network by parsing the caffe model and builds
-//!          the engine that will be used to run MNIST (mEngine)
+//! \details This function creates the SSD network by parsing the UFF model and builds
+//!          the engine that will be used to run SSD (mEngine)
 //!
 //! \return Returns true if the engine was created successfully and false otherwise
 //!
-bool SampleMNIST::build()
+bool SampleUffSSD::build()
 {
+    initLibNvInferPlugins(&gLogger.getTRTLogger(), "");
+
     auto builder = SampleUniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
     if (!builder)
     {
@@ -158,148 +176,90 @@ bool SampleMNIST::build()
         return false;
     }
 
-    auto parser = SampleUniquePtr<nvcaffeparser1::ICaffeParser>(nvcaffeparser1::createCaffeParser());
+    auto parser = SampleUniquePtr<nvuffparser::IUffParser>(nvuffparser::createUffParser());
     if (!parser)
     {
         return false;
     }
 
-    constructNetwork(parser, network);
-    builder->setMaxBatchSize(mParams.batchSize);
-    config->setMaxWorkspaceSize(16_MiB);
-    config->setFlag(BuilderFlag::kGPU_FALLBACK);
-    config->setFlag(BuilderFlag::kSTRICT_TYPES);
-    if (mParams.fp16)
+    auto constructed = constructNetwork(builder, network, config, parser);
+    if (!constructed)
     {
-        config->setFlag(BuilderFlag::kFP16);
-    }
-    if (mParams.int8)
-    {
-        config->setFlag(BuilderFlag::kINT8);
-    }
-
-    samplesCommon::enableDLA(builder.get(), config.get(), mParams.dlaCore);
-
-    mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(builder->buildEngineWithConfig(*network, *config), samplesCommon::InferDeleter());
-
-    if (!mEngine)
         return false;
+    }
 
     assert(network->getNbInputs() == 1);
     mInputDims = network->getInput(0)->getDimensions();
     assert(mInputDims.nbDims == 3);
 
-    return true;
-}
-
-//!
-//! \brief Reads the input and mean data, preprocesses, and stores the result in a managed buffer
-//!
-bool SampleMNIST::processInput(const samplesCommon::BufferManager& buffers, const std::string& inputTensorName, int inputFileIdx) const
-{
-    const int inputH = mInputDims.d[1];
-    const int inputW = mInputDims.d[2];
-
-    // Read a random digit file
-    srand(unsigned(time(nullptr)));
-    std::vector<uint8_t> fileData(inputH * inputW);
-    readPGMFile(locateFile(std::to_string(inputFileIdx) + ".pgm", mParams.dataDirs), fileData.data(), inputH, inputW);
-
-    // Print ASCII representation of digit
-    gLogInfo << "Input:\n";
-    for (int i = 0; i < inputH * inputW; i++)
-    {
-        gLogInfo << (" .:-=+*#%@"[fileData[i] / 26]) << (((i + 1) % inputW) ? "" : "\n");
-    }
-    gLogInfo << std::endl;
-
-    float* hostInputBuffer = static_cast<float*>(buffers.getHostBuffer(inputTensorName));
-
-    for (int i = 0; i < inputH * inputW; i++)
-    {
-        hostInputBuffer[i] = float(fileData[i]);
-    }
+    assert(network->getNbOutputs() == 2);
 
     return true;
 }
 
 //!
-//! \brief Verifies that the output is correct and prints it
-//!
-bool SampleMNIST::verifyOutput(const samplesCommon::BufferManager& buffers, const std::string& outputTensorName, int groundTruthDigit) const
-{
-    const float* prob = static_cast<const float*>(buffers.getHostBuffer(outputTensorName));
-
-    // Print histogram of the output distribution
-    gLogInfo << "Output:\n";
-    float val{0.0f};
-    int idx{0};
-    const int kDIGITS = 10;
-
-    for (int i = 0; i < kDIGITS; i++)
-    {
-        if (val < prob[i])
-        {
-            val = prob[i];
-            idx = i;
-        }
-
-        gLogInfo << i << ": " << std::string(int(std::floor(prob[i] * 10 + 0.5f)), '*') << "\n";
-    }
-    gLogInfo << std::endl;
-
-    return (idx == groundTruthDigit && val > 0.9f);
-}
-
-//!
-//! \brief Uses a caffe parser to create the MNIST Network and marks the
+//! \brief Uses a UFF parser to create the SSD Network and marks the
 //!        output layers
 //!
-//! \param network Pointer to the network that will be populated with the MNIST network
+//! \param network Pointer to the network that will be populated with the SSD network
 //!
 //! \param builder Pointer to the engine builder
 //!
-void SampleMNIST::constructNetwork(SampleUniquePtr<nvcaffeparser1::ICaffeParser>& parser, SampleUniquePtr<nvinfer1::INetworkDefinition>& network)
+bool SampleUffSSD::constructNetwork(SampleUniquePtr<nvinfer1::IBuilder>& builder,
+    SampleUniquePtr<nvinfer1::INetworkDefinition>& network, SampleUniquePtr<nvinfer1::IBuilderConfig>& config,
+    SampleUniquePtr<nvuffparser::IUffParser>& parser)
 {
-    const nvcaffeparser1::IBlobNameToTensor* blobNameToTensor = parser->parse(
-        mParams.prototxtFileName.c_str(),
-        mParams.weightsFileName.c_str(),
-        *network,
-        nvinfer1::DataType::kFLOAT);
+    parser->registerInput(mParams.inputTensorNames[0].c_str(), DimsCHW(3, 300, 300), nvuffparser::UffInputOrder::kNCHW);
+    parser->registerOutput(mParams.outputTensorNames[0].c_str());
 
-    for (auto& s : mParams.outputTensorNames)
+    auto parsed = parser->parse(locateFile(mParams.uffFileName, mParams.dataDirs).c_str(), *network, DataType::kFLOAT);
+    if (!parsed)
     {
-        network->markOutput(*blobNameToTensor->find(s.c_str()));
+        return false;
     }
 
-    // add mean subtraction to the beginning of the network
-    nvinfer1::Dims inputDims = network->getInput(0)->getDimensions();
-    mMeanBlob = SampleUniquePtr<nvcaffeparser1::IBinaryProtoBlob>(parser->parseBinaryProto(mParams.meanFileName.c_str()));
-    nvinfer1::Weights meanWeights{nvinfer1::DataType::kFLOAT, mMeanBlob->getData(), inputDims.d[1] * inputDims.d[2]};
-    // For this sample, a large range based on the mean data is chosen and applied to the head of the network.
-    // After the mean subtraction occurs, the range is expected to be between -127 and 127, so the rest of the network
-    // is given a generic range.
-    // The preferred method is use scales computed based on a representative data set
-    // and apply each one individually based on the tensor. The range here is large enough for the
-    // network, but is chosen for example purposes only.
-    float maxMean = samplesCommon::getMaxValue(static_cast<const float*>(meanWeights.values), samplesCommon::volume(inputDims));
+    builder->setMaxBatchSize(mParams.batchSize);
+    config->setMaxWorkspaceSize(1_GiB);
+    if (mParams.fp16)
+    {
+        config->setFlag(BuilderFlag::kFP16);
+    }
 
-    auto mean = network->addConstant(nvinfer1::Dims3(1, inputDims.d[1], inputDims.d[2]), meanWeights);
-    mean->getOutput(0)->setDynamicRange(-maxMean, maxMean);
-    network->getInput(0)->setDynamicRange(-maxMean, maxMean);
-    auto meanSub = network->addElementWise(*network->getInput(0), *mean->getOutput(0), ElementWiseOperation::kSUB);
-    meanSub->getOutput(0)->setDynamicRange(-maxMean, maxMean);
-    network->getLayer(0)->setInput(0, *meanSub->getOutput(0));
-    samplesCommon::setAllTensorScales(network.get(), 127.0f, 127.0f);
+    // Calibrator life time needs to last until after the engine is built.
+    std::unique_ptr<IInt8Calibrator> calibrator;
+
+    if (mParams.int8)
+    {
+        gLogInfo << "Using Entropy Calibrator 2" << std::endl;
+        const std::string listFileName = "list.txt";
+        const int imageC = 3;
+        const int imageH = 300;
+        const int imageW = 300;
+        nvinfer1::DimsNCHW imageDims{};
+        imageDims = nvinfer1::DimsNCHW{mParams.calBatchSize, imageC, imageH, imageW};
+        BatchStream calibrationStream(mParams.nbCalBatches, imageDims, listFileName, mParams.dataDirs);
+        calibrator.reset(
+            new Int8EntropyCalibrator2<BatchStream>(calibrationStream, 0, "UffSSD", mParams.inputTensorNames[0].c_str()));
+        config->setFlag(BuilderFlag::kINT8);
+        config->setInt8Calibrator(calibrator.get());
+    }
+
+    mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(builder->buildEngineWithConfig(*network, *config), samplesCommon::InferDeleter());
+    if (!mEngine)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 //!
 //! \brief Runs the TensorRT inference engine for this sample
 //!
-//! \details This function is the main execution function of the sample. It allocates
-//!          the buffer, sets inputs, executes the engine, and verifies the output.
+//! \details This function is the main execution function of the sample. It allocates the buffer,
+//!          sets inputs and executes the engine.
 //!
-bool SampleMNIST::infer()
+bool SampleUffSSD::infer()
 {
     // Create RAII buffer manager object
     samplesCommon::BufferManager buffers(mEngine, mParams.batchSize);
@@ -310,83 +270,192 @@ bool SampleMNIST::infer()
         return false;
     }
 
-    // Pick a random digit to try to infer
-    srand(time(NULL));
-    const int digit = rand() % 10;
-
     // Read the input data into the managed buffers
-    // There should be just 1 input tensor
     assert(mParams.inputTensorNames.size() == 1);
-    if (!processInput(buffers, mParams.inputTensorNames[0], digit))
+    if (!processInput(buffers))
     {
         return false;
     }
-    // Create CUDA stream for the execution of this inference.
-    cudaStream_t stream;
-    CHECK(cudaStreamCreate(&stream));
 
-    // Asynchronously copy data from host input buffers to device input buffers
-    buffers.copyInputToDeviceAsync(stream);
+    // Memcpy from host input buffers to device input buffers
+    buffers.copyInputToDevice();
 
-    // Asynchronously enqueue the inference work
-    if (!context->enqueue(mParams.batchSize, buffers.getDeviceBindings().data(), stream, nullptr))
+    bool status = context->execute(mParams.batchSize, buffers.getDeviceBindings().data());
+    if (!status)
     {
         return false;
     }
-    // Asynchronously copy data from device output buffers to host output buffers
-    buffers.copyOutputToHostAsync(stream);
 
-    // Wait for the work in the stream to complete
-    cudaStreamSynchronize(stream);
+    // Memcpy from device output buffers to host output buffers
+    buffers.copyOutputToHost();
 
-    // Release stream
-    cudaStreamDestroy(stream);
+    // Post-process detections and verify results
+    if (!verifyOutput(buffers))
+    {
+        return false;
+    }
 
-    // Check and print the output of the inference
-    // There should be just one output tensor
-    assert(mParams.outputTensorNames.size() == 1);
-    bool outputCorrect = verifyOutput(buffers, mParams.outputTensorNames[0], digit);
-
-    return outputCorrect;
+    return true;
 }
 
 //!
-//! \brief Used to clean up any state created in the sample class
+//! \brief Cleans up any state created in the sample class
 //!
-bool SampleMNIST::teardown()
+bool SampleUffSSD::teardown()
 {
     //! Clean up the libprotobuf files as the parsing is complete
     //! \note It is not safe to use any other part of the protocol buffers library after
     //! ShutdownProtobufLibrary() has been called.
-    nvcaffeparser1::shutdownProtobufLibrary();
+    nvuffparser::shutdownProtobufLibrary();
     return true;
+}
+
+//!
+//! \brief Reads the input and mean data, preprocesses, and stores the result in a managed buffer
+//!
+bool SampleUffSSD::processInput(const samplesCommon::BufferManager& buffers)
+{
+    const int inputC = mInputDims.d[0];
+    const int inputH = mInputDims.d[1];
+    const int inputW = mInputDims.d[2];
+    const int batchSize = mParams.batchSize;
+
+    // Available images
+    std::vector<std::string> imageList = {"dog.ppm", "bus.ppm"};
+    mPPMs.resize(batchSize);
+    assert(mPPMs.size() <= imageList.size());
+    for (int i = 0; i < batchSize; ++i)
+    {
+        readPPMFile(locateFile(imageList[i], mParams.dataDirs), mPPMs[i]);
+    }
+
+    float* hostDataBuffer = static_cast<float*>(buffers.getHostBuffer(mParams.inputTensorNames[0]));
+    // Host memory for input buffer
+    for (int i = 0, volImg = inputC * inputH * inputW; i < mParams.batchSize; ++i)
+    {
+        for (int c = 0; c < inputC; ++c)
+        {
+            // The color image to input should be in BGR order
+            for (unsigned j = 0, volChl = inputH * inputW; j < volChl; ++j)
+            {
+                hostDataBuffer[i * volImg + c * volChl + j]
+                    = (2.0 / 255.0) * float(mPPMs[i].buffer[j * inputC + c]) - 1.0;
+            }
+        }
+    }
+
+    return true;
+}
+
+//!
+//! \brief Filters output detections and verify result
+//!
+//! \return whether the detection output matches expectations
+//!
+bool SampleUffSSD::verifyOutput(const samplesCommon::BufferManager& buffers)
+{
+    const int inputH = mInputDims.d[1];
+    const int inputW = mInputDims.d[2];
+    const int batchSize = mParams.batchSize;
+    const int keepTopK = mParams.keepTopK;
+    const float visualThreshold = mParams.visualThreshold;
+    const int outputClsSize = mParams.outputClsSize;
+
+    const float* detectionOut = static_cast<const float*>(buffers.getHostBuffer(mParams.outputTensorNames[0]));
+    const int* keepCount = static_cast<const int*>(buffers.getHostBuffer(mParams.outputTensorNames[1]));
+
+    std::vector<std::string> classes(outputClsSize);
+
+    // Gather class labels
+    std::ifstream labelFile(locateFile(mParams.labelsFileName, mParams.dataDirs));
+    string line;
+    int id = 0;
+    while (getline(labelFile, line))
+    {
+        classes[id++] = line;
+    }
+
+    bool pass = true;
+
+    for (int p = 0; p < batchSize; ++p)
+    {
+        int numDetections = 0;
+        // at least one correct detection
+        bool correctDetection = false;
+
+        for (int i = 0; i < keepCount[p]; ++i)
+        {
+            const float* det = &detectionOut[0] + (p * keepTopK + i) * 7;
+            if (det[2] < visualThreshold)
+            {
+                continue;
+            }
+
+            // Output format for each detection is stored in the below order
+            // [image_id, label, confidence, xmin, ymin, xmax, ymax]
+            int detection = det[1];
+            assert(detection < outputClsSize);
+            std::string storeName = classes[detection] + "-" + std::to_string(det[2]) + ".ppm";
+
+            numDetections++;
+            if ((p == 0 && classes[detection] == "dog")
+                || (p == 1 && (classes[detection] == "truck" || classes[detection] == "car")))
+            {
+                correctDetection = true;
+            }
+
+            gLogInfo << "Detected " << classes[detection].c_str() << " in the image " << int(det[0]) << " ("
+                     << mPPMs[p].fileName.c_str() << ")"
+                     << " with confidence " << det[2] * 100.f << " and coordinates (" << det[3] * inputW << ","
+                     << det[4] * inputH << ")"
+                     << ",(" << det[5] * inputW << "," << det[6] * inputH << ")." << std::endl;
+
+            gLogInfo << "Result stored in " << storeName.c_str() << "." << std::endl;
+
+            samplesCommon::writePPMFileWithBBox(
+                storeName, mPPMs[p], {det[3] * inputW, det[4] * inputH, det[5] * inputW, det[6] * inputH});
+        }
+        pass &= correctDetection;
+        pass &= numDetections >= 1;
+    }
+
+    return pass;
 }
 
 //!
 //! \brief Initializes members of the params struct using the command line args
 //!
-samplesCommon::CaffeSampleParams initializeSampleParams(const samplesCommon::Args& args)
+SampleUffSSDParams initializeSampleParams(const samplesCommon::Args& args)
 {
-    samplesCommon::CaffeSampleParams params;
+    SampleUffSSDParams params;
     if (args.dataDirs.empty()) //!< Use default directories if user hasn't provided directory paths
     {
-        params.dataDirs.push_back("data/mnist/");
-        params.dataDirs.push_back("data/samples/mnist/");
+        params.dataDirs.push_back("data/ssd/");
+        params.dataDirs.push_back("data/ssd/VOC2007/");
+        params.dataDirs.push_back("data/ssd/VOC2007/PPMImages/");
+        params.dataDirs.push_back("data/samples/ssd/");
+        params.dataDirs.push_back("data/samples/ssd/VOC2007/");
+        params.dataDirs.push_back("data/samples/ssd/VOC2007/PPMImages/");
     }
     else //!< Use the data directory provided by the user
     {
         params.dataDirs = args.dataDirs;
     }
-
-    params.prototxtFileName = locateFile("mnist.prototxt", params.dataDirs);
-    params.weightsFileName = locateFile("mnist.caffemodel", params.dataDirs);
-    params.meanFileName = locateFile("mnist_mean.binaryproto", params.dataDirs);
-    params.inputTensorNames.push_back("data");
-    params.batchSize = 1;
-    params.outputTensorNames.push_back("prob");
+    params.uffFileName = "sample_ssd_relu6.uff";
+    params.labelsFileName = "ssd_coco_labels.txt";
+    params.inputTensorNames.push_back("Input");
+    params.batchSize = 2;
+    params.outputTensorNames.push_back("NMS");
+    params.outputTensorNames.push_back("NMS_1");
     params.dlaCore = args.useDLACore;
     params.int8 = args.runInInt8;
     params.fp16 = args.runInFp16;
+
+    params.outputClsSize = 91;
+    params.calBatchSize = 10;
+    params.nbCalBatches = 10;
+    params.keepTopK = 100;
+    params.visualThreshold = 0.5;
 
     return params;
 }
@@ -396,12 +465,19 @@ samplesCommon::CaffeSampleParams initializeSampleParams(const samplesCommon::Arg
 //!
 void printHelpInfo()
 {
-    std::cout << "Usage: ./sample_mnist [-h or --help] [-d or --datadir=<path to data directory>] [--useDLACore=<int>]\n";
-    std::cout << "--help          Display help information\n";
-    std::cout << "--datadir       Specify path to a data directory, overriding the default. This option can be used multiple times to add multiple directories. If no data directories are given, the default is to use (data/samples/mnist/, data/mnist/)" << std::endl;
-    std::cout << "--useDLACore=N  Specify a DLA engine for layers that support DLA. Value can range from 0 to n-1, where n is the number of DLA engines on the platform." << std::endl;
-    std::cout << "--int8          Run in Int8 mode.\n";
-    std::cout << "--fp16          Run in FP16 mode.\n";
+    std::cout
+        << "Usage: ./sample_uff_ssd [-h or --help] [-d or --datadir=<path to data directory>] [--useDLACore=<int>]"
+        << std::endl;
+    std::cout << "--help          Display help information" << std::endl;
+    std::cout << "--datadir       Specify path to a data directory, overriding the default. This option can be used "
+                 "multiple times to add multiple directories. If no data directories are given, the default is to use "
+                 "data/samples/ssd/ and data/ssd/"
+              << std::endl;
+    std::cout << "--useDLACore=N  Specify a DLA engine for layers that support DLA. Value can range from 0 to n-1, "
+                 "where n is the number of DLA engines on the platform."
+              << std::endl;
+    std::cout << "--fp16          Specify to run in fp16 mode." << std::endl;
+    std::cout << "--int8          Specify to run in int8 mode." << std::endl;
 }
 
 int main(int argc, char** argv)
@@ -424,21 +500,18 @@ int main(int argc, char** argv)
 
     gLogger.reportTestStart(sampleTest);
 
-    samplesCommon::CaffeSampleParams params = initializeSampleParams(args);
+    SampleUffSSD sample(initializeSampleParams(args));
 
-    SampleMNIST sample(params);
-    gLogInfo << "Building and running a GPU inference engine for MNIST" << std::endl;
+    gLogInfo << "Building and running a GPU inference engine for SSD" << std::endl;
 
     if (!sample.build())
     {
         return gLogger.reportFail(sampleTest);
     }
-
     if (!sample.infer())
     {
         return gLogger.reportFail(sampleTest);
     }
-
     if (!sample.teardown())
     {
         return gLogger.reportFail(sampleTest);
