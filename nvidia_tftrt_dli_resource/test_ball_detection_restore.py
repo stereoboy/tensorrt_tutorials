@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 
 # tensorflow libraries    
 import tensorflow as tf
+import tensorrt
 
 # tqdm timing library
 import tqdm
@@ -62,6 +63,9 @@ class Statics():
         for label, mean, std in zip(self.label_list, self.mean_list, self.std_list):
             print_str += "| %s | %.4f     | %.4f     |\n"%(label, mean, std)
         print_str += "\n"
+
+        print_str += "tensorflow: {}\n".format(tf.__version__)
+        print_str += "tensorrt: {}\n".format(tensorrt.__version__)
         print(print_str)
 
         log_path = 'logs'
