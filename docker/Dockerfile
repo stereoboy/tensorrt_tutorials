@@ -10,6 +10,7 @@ RUN apt-get install -y python3-tk
 RUN apt-get remove -y cmake
 RUN pip install cmake==3.11.0
 RUN pip install matplotlib tqdm Pillow
+RUN pip install python-opencv
 RUN pip install pycuda==2019.1
 RUN pip install pytest==4.6.2
 RUN wget https://github.com/NVlabs/cub/archive/1.8.0.zip -O cub-1.8.0.zip \
