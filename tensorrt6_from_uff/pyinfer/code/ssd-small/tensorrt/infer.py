@@ -17,6 +17,92 @@ import ctypes
 import os
 import sys
 
+#
+# https://gist.github.com/xhlulu/f7735970704b97fd0b72203628c1cc77
+#
+category_map = {
+    0: 'nothing',
+    1: 'person',
+    2: 'bicycle',
+    3: 'car',
+    4: 'motorcycle',
+    5: 'airplane',
+    6: 'bus',
+    7: 'train',
+    8: 'truck',
+    9: 'boat',
+    10: 'traffic light',
+    11: 'fire hydrant',
+    13: 'stop sign',
+    14: 'parking meter',
+    15: 'bench',
+    16: 'bird',
+    17: 'cat',
+    18: 'dog',
+    19: 'horse',
+    20: 'sheep',
+    21: 'cow',
+    22: 'elephant',
+    23: 'bear',
+    24: 'zebra',
+    25: 'giraffe',
+    27: 'backpack',
+    28: 'umbrella',
+    31: 'handbag',
+    32: 'tie',
+    33: 'suitcase',
+    34: 'frisbee',
+    35: 'skis',
+    36: 'snowboard',
+    37: 'sports ball',
+    38: 'kite',
+    39: 'baseball bat',
+    40: 'baseball glove',
+    41: 'skateboard',
+    42: 'surfboard',
+    43: 'tennis racket',
+    44: 'bottle',
+    46: 'wine glass',
+    47: 'cup',
+    48: 'fork',
+    49: 'knife',
+    50: 'spoon',
+    51: 'bowl',
+    52: 'banana',
+    53: 'apple',
+    54: 'sandwich',
+    55: 'orange',
+    56: 'broccoli',
+    57: 'carrot',
+    58: 'hot dog',
+    59: 'pizza',
+    60: 'donut',
+    61: 'cake',
+    62: 'chair',
+    63: 'couch',
+    64: 'potted plant',
+    65: 'bed',
+    67: 'dining table',
+    70: 'toilet',
+    72: 'tv',
+    73: 'laptop',
+    74: 'mouse',
+    75: 'remote',
+    76: 'keyboard',
+    77: 'cell phone',
+    78: 'microwave',
+    79: 'oven',
+    80: 'toaster',
+    81: 'sink',
+    82: 'refrigerator',
+    84: 'book',
+    85: 'clock',
+    86: 'vase',
+    87: 'scissors',
+    88: 'teddy bear',
+    89: 'hair drier',
+    90: 'toothbrush'
+}
 # The plugin .so file has to be loaded at global scope and before `import torch` to avoid cuda version mismatch.
 NMS_OPT_PLUGIN_LIBRARY="../build/plugins/NMSOptPlugin/libnmsoptplugin.so"
 if not os.path.isfile(NMS_OPT_PLUGIN_LIBRARY):
@@ -37,11 +123,12 @@ import pytest
 import tensorrt as trt
 import time
 import cv2
+import glob 
 
 from code.common.runner import EngineRunner, get_input_format
 from code.common import logging
 import code.common.arguments as common_args
-from glob import glob
+#from glob import glob
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
@@ -55,6 +142,52 @@ class PredictionLayout(enum.IntEnum):
     CONFIDENCE = 5
     LABEL = 6
 
+
+def preprocess_int8_chw4(batch_idx, img):
+
+    start_time = time.time()
+    img_resized = cv2.resize(img, (300, 300), interpolation=cv2.INTER_LINEAR)
+    logging.info("Batch {:d} >> cv2.resize(img_rgba, (300, 300)):  {:f}".format(batch_idx, time.time() - start_time))
+
+    img_rgba = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGBA)
+    logging.info("Batch {:d} >> cv2.cvtColor(img, cv2.COLOR_BGR2RGBA):  {:f}".format(batch_idx, time.time() - start_time))
+
+    start_time = time.time()
+    img_int32 = np.array(img_rgba).astype(np.int32)
+    logging.info("Batch {:d} >> np.array(img_rgba).astype(np.int32):  {:f}".format(batch_idx, time.time() - start_time))
+    start_time = time.time()
+    #img_float = img_float.transpose((2, 0, 1))
+    img_int32 = img_int32 - 127
+    img_int8  = img_int32.astype(dtype=np.int8, order='C')
+    img_int8[:, :, 3] = 0
+    img_int8_chw4 = img_int8
+    #img_int8_chw4= np.moveaxis(np.pad(img_int8, ((0, 1), (0, 0),(0, 0)), "constant"), -3, -1)
+    print("img_int8_chw4.flags['C_CONTIGUOUS'] = {}".format(img_int8_chw4.flags['C_CONTIGUOUS']))
+    batch_images = np.expand_dims(img_int8_chw4, axis=0)
+
+    return batch_images
+
+def preprocess_float32_linear(batch_idx, img):
+
+    start_time = time.time()
+    img_resized = cv2.resize(img, (300, 300), interpolation=cv2.INTER_LINEAR)
+    logging.info("Batch {:d} >> cv2.resize(img_rgba, (300, 300)):  {:f}".format(batch_idx, time.time() - start_time))
+
+    img_rgba = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
+    logging.info("Batch {:d} >> cv2.cvtColor(img, cv2.COLOR_BGR2RGB):  {:f}".format(batch_idx, time.time() - start_time))
+
+    start_time = time.time()
+    img_float32 = np.array(img_rgba).astype(np.float32)
+    logging.info("Batch {:d} >> np.array(img_rgba).astype(np.float32):  {:f}".format(batch_idx, time.time() - start_time))
+    start_time = time.time()
+    img_float32 = img_float32.transpose((2, 0, 1))
+    img_float32 = np.ascontiguousarray(img_float32)
+    print("img_float32.flags['C_CONTIGUOUS'] = {}".format(img_float32.flags['C_CONTIGUOUS']))
+    img_float32 = (2.0 / 255.0) * img_float32 - 1.0
+    batch_images = np.expand_dims(img_float32, axis=0)
+
+    return batch_images
+
 def run_SSDMobileNet_accuracy(engine_file, batch_size, num_images, verbose=False, output_file="build/out/SSDMobileNet/dump.json"):
     logging.info("Running SSDMobileNet functionality test for engine [ {:} ] with batch size {:}".format(engine_file, batch_size))
 
@@ -62,83 +195,64 @@ def run_SSDMobileNet_accuracy(engine_file, batch_size, num_images, verbose=False
     input_dtype, input_format = get_input_format(runner.engine)
     if input_dtype == trt.DataType.FLOAT:
         format_string = "fp32"
+        preprocess = preprocess_float32_linear
     elif input_dtype == trt.DataType.INT8:
         if input_format == trt.TensorFormat.LINEAR:
             format_string = "int8_linear"
         elif input_format == trt.TensorFormat.CHW4:
             format_string = "int8_chw4"
-    image_dir = os.path.join(os.getenv("PREPROCESSED_DATA_DIR", "build/preprocessed_data"),
-            "coco/val2017/SSDMobileNet", format_string)
-    annotations_path = os.path.join(os.getenv("PREPROCESSED_DATA_DIR", "build/preprocessed_data"),
-            "coco/annotations/instances_val2017.json")
-    val_map = "data_maps/coco/val_map.txt"
+            preprocess = preprocess_int8_chw4
 
-    if len(glob(image_dir)) == 0:
-        logging.warn("Cannot find data directory in ({:})".format(image_dir))
-        pytest.skip("Cannot find data directory ({:})".format(image_dir))
 
-    coco = COCO(annotation_file=annotations_path)
-
-    coco_detections = []
-    image_ids = coco.getImgIds()
-    num_images = min(num_images, len(image_ids))
+    logging.info("Engine TensorFormat: {}".format(format_string))
 
     logging.info("Running validation on {:} images. Please wait...".format(num_images))
     batch_idx = 0
-    for image_idx in range(0, num_images, batch_size):
-        batch_image_ids = image_ids[image_idx:image_idx + batch_size]
-        actual_batch_size = len(batch_image_ids)
-        batch_images = np.ascontiguousarray(np.stack([np.load(os.path.join(image_dir, coco.imgs[id]["file_name"] + ".npy")) for id in batch_image_ids]))
+    img_paths = glob.glob(os.path.join("../data/coco", "*.jpg"))
+    print (img_paths)
+    for batch_idx, img_path in enumerate(img_paths):
+        img = cv2.imread(img_path)
+        img_height, img_width = img.shape[:2]
+        logging.info("Dim = {}x{}".format(img_height, img_width))
 
         start_time = time.time()
-        [outputs] = runner([batch_images], actual_batch_size)
+        batch_images = preprocess(batch_idx, img)
+        if verbose:
+            logging.info("Batch {:d} >> Preprocessing time:  {:f}".format(batch_idx, time.time() - start_time))
+        
+        start_time = time.time()
+        [outputs] = runner([batch_images], batch_size)
         if verbose:
             logging.info("Batch {:d} >> Inference time:  {:f}".format(batch_idx, time.time() - start_time))
 
-        batch_detections = outputs.reshape(batch_size, 100*7+1)[:actual_batch_size]
+        batch_detections = outputs.reshape(batch_size, 100*7+1)[:batch_size]
 
-        for detections, image_id in zip(batch_detections, batch_image_ids):
+        for detections in batch_detections:
             keep_count = detections[100*7].view('int32')
-            image_width = coco.imgs[image_id]["width"]
-            image_height = coco.imgs[image_id]["height"]
             for detection in detections[:keep_count*7].reshape(keep_count,7):
                 score = float(detection[PredictionLayout.CONFIDENCE])
-                bbox_coco_fmt = [
-                    detection[PredictionLayout.XMIN] * image_width,
-                    detection[PredictionLayout.YMIN] * image_height,
-                    (detection[PredictionLayout.XMAX] - detection[PredictionLayout.XMIN]) * image_width,
-                    (detection[PredictionLayout.YMAX] - detection[PredictionLayout.YMIN]) * image_height,
-                ]
+                xmin = detection[PredictionLayout.XMIN] * img_width
+                ymin = detection[PredictionLayout.YMIN] * img_height
+                xmax = (detection[PredictionLayout.XMAX]) * img_width
+                ymax = (detection[PredictionLayout.YMAX]) * img_height
+                score = float(detection[PredictionLayout.CONFIDENCE])
 
-                coco_detection = {
-                    "image_id": image_id,
-                    "category_id": int(detection[PredictionLayout.LABEL]),
-                    "bbox": bbox_coco_fmt,
-                    "score": score,
-                }
-                coco_detections.append(coco_detection)
+                if score > 0.2:
+                    cv2.rectangle(img, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (100, 255, 0), 2)
+                    class_id = int(detection[PredictionLayout.LABEL])
+                    class_label = category_map[class_id]
+                    display_str = "{}:{}%".format(class_label, int(100*score))
+                    cv2.putText(img, display_str, (int(xmin), int(ymin + 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (100, 255, 0), 5, cv2.LINE_8)
+                    cv2.putText(img, display_str, (int(xmin), int(ymin + 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1, cv2.LINE_8)
 
-        batch_idx += 1
+        cv2.imshow('display', img)
+        key = cv2.waitKey(0)
+        if key == ord('c'):
+            continue
+        if key == 27 or key == ord('q'):
+            break
 
-    output_dir = os.path.dirname(output_file)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
 
-    with open(output_file, "w") as f:
-        json.dump(coco_detections, f)
-
-    cocoDt = coco.loadRes(output_file)
-    eval = COCOeval(coco, cocoDt, 'bbox')
-    eval.params.imgIds = image_ids[:num_images]
-
-    eval.evaluate()
-    eval.accumulate()
-    eval.summarize()
-
-    map_score = eval.stats[0]
-
-    logging.info("Get mAP score = {:f} Target = {:f}".format(map_score, 0.22386))
-    return map_score
 
 def main():
     args = common_args.parse_args(common_args.ACCURACY_ARGS)
