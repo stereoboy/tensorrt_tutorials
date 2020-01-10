@@ -3,7 +3,7 @@ XAUTH=/tmp/.docker.xauth
 touch $XAUTH
 xauth nlist $DISPLAY | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
 
-docker run  --gpus=all --rm -it \
+docker run  --gpus '"device=1"' --dt -it \
         --volume=$XSOCK:$XSOCK:rw \
         --volume=$XAUTH:$XAUTH:rw \
         --env="XAUTHORITY=${XAUTH}" \
@@ -12,6 +12,8 @@ docker run  --gpus=all --rm -it \
         --env="NVIDIA_DRIVER_CAPABILITIES=all" \
         -v /home/jylee/work2:/work2 \
         -w /work2 \
-        --privileged \
         --name tf-trt6-con \
    tf-trt6:latest
+
+# options
+#        --privileged \
