@@ -307,6 +307,7 @@ bool SampleUffSSD::constructNetwork()
     return true;
 }
 
+#define ASYNC 1
 //!
 //! \brief Runs the TensorRT inference engine for this sample
 //!
@@ -325,11 +326,16 @@ bool SampleUffSSD::infer()
         return false;
     }
 
-    for (int i = 0; i < 1000; i ++)
+#if ASYNC
+    // Create CUDA stream for the execution of this inference.
+    cudaStream_t stream;
+    CHECK(cudaStreamCreate(&stream));
+#endif
+
+    for (int i = 0; i < 10; i ++)
     {
         auto startTime = std::chrono::high_resolution_clock::now();
 
-        std::cout<< startTime << std::endl;
         // Read the input data into the managed buffers
         assert(mParams.inputTensorNames.size() == 1);
         if (!processInput(buffers))
@@ -337,25 +343,76 @@ bool SampleUffSSD::infer()
             return false;
         }
 
+#if ASYNC
+        auto startTime0 = std::chrono::high_resolution_clock::now();
+        // Asynchronously copy data from host input buffers to device input buffers
+        buffers.copyInputToDeviceAsync(stream);
+        // Wait for the work in the stream to complete
+        cudaStreamSynchronize(stream);
+
+        auto endTime0 = std::chrono::high_resolution_clock::now();
+        float totalTime0 = std::chrono::duration<float, std::milli>(endTime0 - startTime0).count();
+        std::cout<< "cudaMemcpyHostToDevice(...); elapsed time=" << totalTime0 << std::endl;
+
+        auto startTime1 = std::chrono::high_resolution_clock::now();
+        // Asynchronously enqueue the inference work
+        if (!context->enqueue(mParams.batchSize, buffers.getDeviceBindings().data(), stream, nullptr))
+        {
+            return false;
+        }
+        // Wait for the work in the stream to complete
+        //cudaStreamSynchronize(stream);
+
+        auto endTime1 = std::chrono::high_resolution_clock::now();
+        float totalTime1 = std::chrono::duration<float, std::milli>(endTime1 - startTime1).count();
+        std::cout<< "context->enqueue(...); elapsed time=" << totalTime1 << std::endl;
+
+        auto startTime2 = std::chrono::high_resolution_clock::now();
+        // Asynchronously copy data from device output buffers to host output buffers
+        //buffers.copyOutputToHostAsync(stream);
+        // Wait for the work in the stream to complete
+        //cudaStreamSynchronize(stream);
+
+        auto endTime2 = std::chrono::high_resolution_clock::now();
+        float totalTime2 = std::chrono::duration<float, std::milli>(endTime2 - startTime2).count();
+        std::cout<< "cudaMemcpyDeviceToHost(...); elapsed time=" << totalTime2 << std::endl;
+
+#else
+        auto startTime0 = std::chrono::high_resolution_clock::now();
         // Memcpy from host input buffers to device input buffers
         buffers.copyInputToDevice();
-        //std::cout<< "buffers.copyInputToDevice();" << std::endl;
+        auto endTime0 = std::chrono::high_resolution_clock::now();
+        float totalTime0 = std::chrono::duration<float, std::milli>(endTime0 - startTime0).count();
+        std::cout<< "cudaMemcpyHostToDevice(...); elapsed time=" << totalTime0 << std::endl;
 
+        auto startTime1 = std::chrono::high_resolution_clock::now();
         bool status = context->execute(mParams.batchSize, buffers.getDeviceBindings().data());
         if (!status)
         {
             return false;
         }
+        auto endTime1 = std::chrono::high_resolution_clock::now();
+        float totalTime1 = std::chrono::duration<float, std::milli>(endTime1 - startTime1).count();
+        std::cout<< "context->execute(...); elapsed time=" << totalTime1 << std::endl;
 
+        auto startTime2 = std::chrono::high_resolution_clock::now();
         // Memcpy from device output buffers to host output buffers
-        buffers.copyOutputToHost();
-        //std::cout<< "buffers.copyOutputToHost();" << std::endl;
+        //buffers.copyOutputToHost();
+        auto endTime2 = std::chrono::high_resolution_clock::now();
+        float totalTime2 = std::chrono::duration<float, std::milli>(endTime2 - startTime2).count();
+        std::cout<< "cudaMemcpyDeviceToHost(...); elapsed time=" << totalTime2 << std::endl;
+#endif
 
         auto endTime = std::chrono::high_resolution_clock::now();
         float totalTime = std::chrono::duration<float, std::milli>(endTime - startTime).count();
-        std::cout<< "context->execute(...); elapsed time=" << totalTime << std::endl;
+        std::cout<< "Total Process; elapsed time=" << totalTime << std::endl;
+
     }
 
+#if ASYNC
+    // Release stream
+    cudaStreamDestroy(stream);
+#endif
 
     // Post-process detections and verify results
     if (!verifyOutput(buffers))
